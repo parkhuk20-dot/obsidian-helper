@@ -1,8 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 import json
-import os
-
-from openai import OpenAI
+from ai_client import AiConfigurationError, generate
 
 SERVER_ERROR = '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요'
 
@@ -25,6 +23,7 @@ class handler(BaseHTTPRequestHandler):
             return self._send(400, {'error': '잘못된 요청이에요'})
 
         notes = body.get('notes')
+        ai = body.get('ai')
         if not isinstance(notes, list) or not 2 <= len(notes) <= 20:
             return self._send(400, {'error': '노트는 2개 이상 20개 이하로 보내주세요'})
         for note in notes:
@@ -40,19 +39,13 @@ class handler(BaseHTTPRequestHandler):
         )
 
         try:
-            client = OpenAI(api_key=os.environ['OPENAI_API_KEY'], timeout=25)
-            resp = client.chat.completions.create(
-                model='gpt-4o-mini',
-                response_format={'type': 'json_object'},
-                messages=[
-                    {'role': 'system', 'content': SYSTEM_PROMPT},
-                    {'role': 'user', 'content': f'노트 목록:\n{notes_payload}'},
-                ],
-            )
-            data = json.loads(resp.choices[0].message.content)
+            content = generate(ai, SYSTEM_PROMPT, [{'role': 'user', 'content': f'노트 목록:\n{notes_payload}'}], json_mode=True)
+            data = json.loads(content)
             links = data['links']
             if not isinstance(links, list):
                 raise ValueError('links is not a list')
+        except AiConfigurationError as exc:
+            return self._send(400, {'error': str(exc)})
         except Exception:
             return self._send(500, {'error': SERVER_ERROR})
 

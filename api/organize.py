@@ -1,8 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 import json
-import os
-
-from openai import OpenAI
+from ai_client import AiConfigurationError, generate
 
 SERVER_ERROR = '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요'
 
@@ -25,21 +23,16 @@ class handler(BaseHTTPRequestHandler):
             return self._send(400, {'error': '잘못된 요청이에요'})
 
         note = body.get('note')
+        ai = body.get('ai')
         if not isinstance(note, str) or not note.strip():
             return self._send(400, {'error': '내용을 입력해주세요'})
         if len(note) > 5000:
             return self._send(400, {'error': '메모는 5,000자 이하로 입력해주세요'})
 
         try:
-            client = OpenAI(api_key=os.environ['OPENAI_API_KEY'], timeout=25)
-            resp = client.chat.completions.create(
-                model='gpt-4o-mini',
-                messages=[
-                    {'role': 'system', 'content': SYSTEM_PROMPT},
-                    {'role': 'user', 'content': note},
-                ],
-            )
-            result = resp.choices[0].message.content.strip()
+            result = generate(ai, SYSTEM_PROMPT, [{'role': 'user', 'content': note}]).strip()
+        except AiConfigurationError as exc:
+            return self._send(400, {'error': str(exc)})
         except Exception:
             return self._send(500, {'error': SERVER_ERROR})
 

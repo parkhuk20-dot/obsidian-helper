@@ -12,7 +12,7 @@
 ## 기술 스택
 
 - 프론트엔드: 순수 HTML/CSS/JavaScript (프레임워크·빌드 도구 없음)
-- 백엔드: Vercel Serverless Functions (Python) + OpenAI API (`gpt-4o-mini`)
+- 백엔드: Vercel Serverless Functions (Python) + OpenAI·Claude·Gemini API
 - 저장: 노트는 브라우저 localStorage에만 저장 (서버 저장 없음)
 
 ## 로컬 실행
@@ -30,6 +30,18 @@ vercel dev
 3. 배포 후 배포 URL에서 연결 분석·정리기·챗봇 동작 확인
 
 > ⚠️ API 키는 환경 변수로만 관리해요. `.env*` 파일은 절대 커밋하지 마세요 (`.gitignore`에 포함됨).
+
+### AI 공급자별 환경 변수
+
+웹 화면에서 공급자와 모델을 선택할 수 있어요. 실제 호출에는 선택한 공급자의 키만 필요합니다.
+
+| 공급자 | 환경 변수 | 선택 가능 모델 |
+| --- | --- | --- |
+| OpenAI | `OPENAI_API_KEY` | GPT-4o mini, GPT-4.1 mini |
+| Anthropic | `ANTHROPIC_API_KEY` | Claude Haiku 4.5, Sonnet 4.6, Opus 4.8 |
+| Google | `GEMINI_API_KEY` | Gemini 3.5 Flash, Gemini 3 Pro |
+
+Vercel에서는 **Settings → Environment Variables**에 필요한 키를 등록한 뒤 재배포하세요.
 
 ## 폴더 구조
 

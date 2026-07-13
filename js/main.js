@@ -47,7 +47,7 @@ if (document.getElementById('note-title')) {
   analyzeBtn.addEventListener('click', async () => {
     const notes = getNotes(); analyzeBtn.disabled = true; resultArea.hidden = true; showLoading(analyzeStatus, true);
     try {
-      const data = await callApi('/api/connect', { notes: notes.map(({ id, title, content }) => ({ id, title, content })) });
+      const data = await callApi('/api/connect', { notes: notes.map(({ id, title, content }) => ({ id, title, content })), ai: getAiSettings() });
       lastAnalysis = { notes, links: data.links, tags: data.tags || {} };
       showLoading(analyzeStatus, false); renderResult(lastAnalysis); recordAiUse(); updateActivityView();
     } catch (err) { showError(analyzeStatus, errorMessage(err)); }
@@ -96,7 +96,7 @@ if (document.getElementById('organize-input')) {
     const note = organizeInput.value.trim();
     if (!note) return showError(organizeStatus, '내용을 입력해주세요');
     organizeBtn.disabled = true; organizeResultWrap.hidden = true; showLoading(organizeStatus, true);
-    try { const data = await callApi('/api/organize', { note }); showLoading(organizeStatus, false); organizeResult.textContent = data.result; organizeResultWrap.hidden = false; recordAiUse(); updateActivityView(); }
+    try { const data = await callApi('/api/organize', { note, ai: getAiSettings() }); showLoading(organizeStatus, false); organizeResult.textContent = data.result; organizeResultWrap.hidden = false; recordAiUse(); updateActivityView(); }
     catch (err) { showError(organizeStatus, errorMessage(err)); }
     finally { organizeBtn.disabled = false; }
   });
@@ -112,7 +112,7 @@ if (document.getElementById('organize-input')) {
   async function sendChat() {
     const question = chatInput.value.trim(); if (!question) return showError(chatStatus, '내용을 입력해주세요');
     chatStatus.innerHTML = ''; chatInput.value = ''; appendBubble('user', question); chatHistory.push({ role: 'user', content: question }); chatSendBtn.disabled = true; chatInput.disabled = true; showLoading(chatStatus, true);
-    try { const data = await callApi('/api/chat', { messages: chatHistory.slice(-10) }); showLoading(chatStatus, false); chatHistory.push({ role: 'assistant', content: data.reply }); appendBubble('assistant', data.reply); recordAiUse(); updateActivityView(); }
+    try { const data = await callApi('/api/chat', { messages: chatHistory.slice(-10), ai: getAiSettings() }); showLoading(chatStatus, false); chatHistory.push({ role: 'assistant', content: data.reply }); appendBubble('assistant', data.reply); recordAiUse(); updateActivityView(); }
     catch (err) { showError(chatStatus, errorMessage(err)); }
     finally { chatSendBtn.disabled = false; chatInput.disabled = false; chatInput.focus(); }
   }

@@ -147,6 +147,12 @@ main { padding-top: var(--header-h); }
 .feature-card span { font-size: 1.7rem; display: block; margin-bottom: 12px; }
 .feature-card h3 { margin-bottom: 6px; }
 .feature-card p { color: var(--muted); font-size: 0.9rem; }
+.model-settings { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: 28px 0; }
+.model-settings h2 { font-size: 1rem; margin: 0 0 3px; }
+.model-settings p { color: var(--muted); font-size: 0.85rem; }
+.model-selects { display: flex; gap: 10px; flex-wrap: wrap; }
+.model-selects label { color: var(--muted); display: flex; flex-direction: column; font-size: 0.78rem; gap: 4px; }
+.model-selects select { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font: inherit; min-width: 190px; padding: 8px; }
 .stats-section { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 72px; }
 .stats-section .section-desc { margin: 0; }
 .stats-grid { display: flex; gap: 24px; text-align: center; }
@@ -462,6 +468,7 @@ main { padding-top: var(--header-h); }
 
   .stats-section { align-items: flex-start; flex-direction: column; }
   .stats-grid { width: 100%; justify-content: space-between; gap: 8px; }
+  .model-settings { align-items: flex-start; flex-direction: column; }
 
   .result-layout { grid-template-columns: 1fr; }
   .chat-messages { height: 320px; }

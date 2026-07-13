@@ -1,8 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 import json
-import os
-
-from openai import OpenAI
+from ai_client import AiConfigurationError, generate
 
 SERVER_ERROR = '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요'
 
@@ -22,6 +20,7 @@ class handler(BaseHTTPRequestHandler):
             return self._send(400, {'error': '잘못된 요청이에요'})
 
         messages = body.get('messages')
+        ai = body.get('ai')
         if not isinstance(messages, list) or not messages:
             return self._send(400, {'error': '내용을 입력해주세요'})
         for msg in messages:
@@ -37,12 +36,9 @@ class handler(BaseHTTPRequestHandler):
         history = messages[-10:]  # 토큰 방어: 최근 10개만 사용
 
         try:
-            client = OpenAI(api_key=os.environ['OPENAI_API_KEY'], timeout=25)
-            resp = client.chat.completions.create(
-                model='gpt-4o-mini',
-                messages=[{'role': 'system', 'content': SYSTEM_PROMPT}] + history,
-            )
-            reply = resp.choices[0].message.content
+            reply = generate(ai, SYSTEM_PROMPT, history)
+        except AiConfigurationError as exc:
+            return self._send(400, {'error': str(exc)})
         except Exception:
             return self._send(500, {'error': SERVER_ERROR})
 
