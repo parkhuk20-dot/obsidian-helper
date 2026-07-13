@@ -75,6 +75,36 @@ if (document.getElementById('note-title')) {
     renderResult(lastAnalysis);
   });
 
+  document.getElementById('demo-large-graph-btn').addEventListener('click', () => {
+    const topics = [
+      ['생산성', '할 일의 우선순위를 정하고 집중 시간을 확보하는 방법'],
+      ['독서', '읽은 내용에서 기억할 문장과 생각을 메모하는 습관'],
+      ['운동', '주 3회 가벼운 운동을 꾸준히 이어가는 계획'],
+      ['여행', '다음 여행에서 가보고 싶은 장소와 준비할 목록'],
+      ['요리', '새로운 레시피를 기록하고 재료를 관리하는 방법'],
+      ['외국어', '매일 짧은 표현을 익히고 복습하는 학습 기록'],
+      ['재테크', '소비를 돌아보고 장기 목표를 세우는 금융 메모'],
+      ['커리어', '관심 있는 업무 역량과 배움을 정리하는 계획'],
+      ['창작', '글감과 아이디어를 연결해 작은 결과물로 만드는 과정'],
+      ['관계', '고마웠던 대화와 다음에 나눌 이야기를 기록하는 습관'],
+    ];
+    const demoNotes = []; const demoLinks = []; const demoTags = {};
+    topics.forEach(([topic, description], topicIndex) => {
+      let previousId = null;
+      for (let number = 1; number <= 10; number += 1) {
+        const id = `large-${topicIndex}-${number}`;
+        demoNotes.push({ id, title: `${topic} · 메모 ${number}`, content: `${description}. ${number}번째로 떠오른 구체적인 아이디어와 다음 행동을 적어둔다.` });
+        demoTags[id] = [`#${topic}`, '#예시메모'];
+        if (previousId) demoLinks.push({ from: previousId, to: id, reason: `${topic} 주제 안에서 이어지는 생각이에요.` });
+        previousId = id;
+      }
+      if (topicIndex > 0) demoLinks.push({ from: `large-${topicIndex - 1}-1`, to: `large-${topicIndex}-1`, reason: '서로 다른 주제에서 발견한 확장 아이디어예요.' });
+    });
+    lastAnalysis = { notes: demoNotes, links: demoLinks, tags: demoTags };
+    analyzeStatus.innerHTML = '<p class="muted">10개 주제, 100개 예시 메모와 99개 연결을 표시했어요. 이 데이터는 브라우저에 저장되지 않아요.</p>';
+    renderResult(lastAnalysis);
+  });
+
   function renderResult({ notes, links, tags }) {
     const byId = Object.fromEntries(notes.map((n) => [n.id, n]));
     const linksList = document.getElementById('links-list'); linksList.innerHTML = '';
