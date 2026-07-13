@@ -1,4 +1,4 @@
-// 노트 CRUD + localStorage
+// 노트 CRUD + localStorage + 키워드 기반 연결
 const STORAGE_KEY = 'forest_notes';
 const NOTE_MAX_CONTENT = 500;
 const NOTE_MAX_COUNT = 20;
@@ -18,7 +18,18 @@ function saveNotes(notes) {
   localStorage.setItem('forest_note_count', String(notes.length));
 }
 
-function addNote(title, content) {
+// '#' 제거 + 공백 정리
+function normalizeKeyword(value) {
+  return String(value).trim().replace(/^#+/, '').replace(/\s+/g, ' ').trim();
+}
+
+function noteKeywords(note) {
+  return Array.isArray(note && note.keywords)
+    ? note.keywords.map(normalizeKeyword).filter(Boolean)
+    : [];
+}
+
+function addNote(title, content, keywords = []) {
   const notes = getNotes();
   if (notes.length >= NOTE_MAX_COUNT) {
     return { ok: false, error: `노트는 최대 ${NOTE_MAX_COUNT}개까지 추가할 수 있어요` };
@@ -29,10 +40,17 @@ function addNote(title, content) {
   if (content.length > NOTE_MAX_CONTENT) {
     return { ok: false, error: `내용은 ${NOTE_MAX_CONTENT}자 이하로 적어주세요` };
   }
+  const cleaned = [];
+  const seen = new Set();
+  keywords.map(normalizeKeyword).forEach((kw) => {
+    const key = kw.toLowerCase();
+    if (kw && !seen.has(key)) { seen.add(key); cleaned.push(kw); }
+  });
   notes.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     title: title.trim(),
     content: content.trim(),
+    keywords: cleaned.slice(0, 3),
     createdAt: new Date().toISOString(),
   });
   saveNotes(notes);
@@ -41,6 +59,26 @@ function addNote(title, content) {
 
 function deleteNote(id) {
   saveNotes(getNotes().filter((n) => n.id !== id));
+}
+
+// 키워드를 공유하는 노트 쌍을 연결(간선)로 만든다 — 옵시디언의 태그·링크처럼
+function linksFromKeywords(notes) {
+  const links = [];
+  for (let i = 0; i < notes.length; i += 1) {
+    const a = noteKeywords(notes[i]);
+    for (let j = i + 1; j < notes.length; j += 1) {
+      const setB = new Set(noteKeywords(notes[j]).map((k) => k.toLowerCase()));
+      const shared = a.filter((k) => setB.has(k.toLowerCase()));
+      if (shared.length) {
+        links.push({
+          from: notes[i].id,
+          to: notes[j].id,
+          reason: `공유 키워드: ${shared.map((k) => '#' + k).join(' ')}`,
+        });
+      }
+    }
+  }
+  return links;
 }
 
 function renderNotes() {
@@ -72,6 +110,20 @@ function renderNotes() {
     });
 
     card.append(title, preview, del);
+
+    const kws = noteKeywords(note);
+    if (kws.length) {
+      const chips = document.createElement('div');
+      chips.className = 'note-keywords';
+      kws.forEach((kw) => {
+        const chip = document.createElement('span');
+        chip.className = 'kw-chip';
+        chip.textContent = '#' + kw;
+        chips.appendChild(chip);
+      });
+      card.appendChild(chips);
+    }
+
     listEl.appendChild(card);
   }
 
@@ -84,6 +136,5 @@ function renderNotes() {
     msgEl.hidden = false;
   }
 
-  // main.js에서 정의 — 분석 버튼 활성/비활성 갱신
   if (typeof updateAnalyzeButton === 'function') updateAnalyzeButton();
 }

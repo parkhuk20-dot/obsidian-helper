@@ -284,7 +284,12 @@ main { padding-top: var(--header-h); }
 }
 .graph-wrap { padding: 10px; }
 .graph-wrap:hover { transform: none; box-shadow: none; }
-#graph { width: 100%; display: block; }
+#graph { width: 100%; display: block; cursor: default; touch-action: none; }
+
+/* 노트 카드 키워드 칩 */
+.note-keywords { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+.kw-chip { font-size: 0.72rem; color: var(--accent); background: rgba(167, 139, 250, 0.12); border: 1px solid rgba(167, 139, 250, 0.32); border-radius: 999px; padding: 1px 8px; }
+:root[data-theme="light"] .kw-chip { background: rgba(92, 98, 201, 0.1); border-color: rgba(92, 98, 201, 0.3); }
 .interactive-graph { display: grid; grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr); gap: 18px; padding: 12px; }
 .interactive-graph .graph-wrap { position: relative; min-height: 440px; }
 .graph-tooltip { background: var(--text); border-radius: 6px; color: var(--bg); font-size: 0.8rem; max-width: 180px; padding: 6px 8px; pointer-events: none; position: absolute; z-index: 2; }

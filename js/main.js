@@ -11,17 +11,54 @@ function showError(el, msg) { el.innerHTML = ''; const p = document.createElemen
 async function copyText(text, btn) { try { await navigator.clipboard.writeText(text); const original = btn.textContent; btn.textContent = '복사됐어요!'; setTimeout(() => { btn.textContent = original; }, 1500); } catch { alert('복사에 실패했어요. 직접 선택해서 복사해주세요'); } }
 function updateAnalyzeButton() {}
 
+// 노트 작성: 저장할 때 AI가 키워드 3개를 뽑아 노트를 연결한다
 if (document.getElementById('note-title')) {
-  const title = document.getElementById('note-title'); const content = document.getElementById('note-content'); const message = document.getElementById('note-form-msg');
+  const title = document.getElementById('note-title');
+  const content = document.getElementById('note-content');
+  const message = document.getElementById('note-form-msg');
+  const addBtn = document.getElementById('add-note-btn');
+
   content.addEventListener('input', () => { document.getElementById('note-char-count').textContent = content.value.length; });
-  document.getElementById('add-note-btn').addEventListener('click', () => {
-    const result = addNote(title.value, content.value);
+
+  addBtn.addEventListener('click', async () => {
+    const titleValue = title.value.trim();
+    const contentValue = content.value.trim();
+    // AI 호출 전에 기본 검증 (실패한 요청으로 API를 낭비하지 않도록)
+    if (!titleValue || !contentValue) { message.textContent = '내용을 입력해주세요'; message.hidden = false; return; }
+    if (getNotes().length >= NOTE_MAX_COUNT) { message.textContent = `노트는 최대 ${NOTE_MAX_COUNT}개까지 추가할 수 있어요`; message.hidden = false; return; }
+    message.hidden = true;
+
+    const originalLabel = addBtn.textContent;
+    addBtn.disabled = true;
+    addBtn.textContent = 'AI가 키워드 연결 중…';
+    let keywords = [];
+    let warning = '';
+    try {
+      const existing = [...new Set(getNotes().flatMap((note) => noteKeywords(note)))];
+      const data = await callApi('/api/keywords', { title: titleValue, content: contentValue, existing_keywords: existing, ai: getAiSettings() });
+      keywords = Array.isArray(data.keywords) ? data.keywords : [];
+      recordAiUse();
+    } catch (err) {
+      warning = `AI 키워드 연결에 실패해 키워드 없이 저장했어요. (${errorMessage(err)})`;
+    } finally {
+      addBtn.textContent = originalLabel;
+      addBtn.disabled = false;
+    }
+
+    const result = addNote(titleValue, contentValue, keywords);
     if (!result.ok) { message.textContent = result.error; message.hidden = false; return; }
-    message.hidden = true; title.value = ''; content.value = ''; document.getElementById('note-char-count').textContent = '0'; renderNotes(); updateActivityView();
+    title.value = '';
+    content.value = '';
+    document.getElementById('note-char-count').textContent = '0';
+    if (warning) { message.textContent = warning; message.hidden = false; } else { message.hidden = true; }
+    renderNotes();
+    updateActivityView();
   });
+
   renderNotes();
 }
 
+// AI 도구: 노트 정리기 + Q&A 챗봇
 if (document.getElementById('organize-input')) {
   const organizeInput = document.getElementById('organize-input'); const organizeBtn = document.getElementById('organize-btn'); const organizeStatus = document.getElementById('organize-status'); const organizeResultWrap = document.getElementById('organize-result-wrap'); const organizeResult = document.getElementById('organize-result');
   organizeInput.addEventListener('input', () => { document.getElementById('organize-char-count').textContent = organizeInput.value.length; });
