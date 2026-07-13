@@ -4,175 +4,53 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>정리의 숲 — 흩어진 아이디어를 연결하는 곳</title>
-  <meta name="description" content="노트를 적으면 AI가 아이디어 사이의 연결을 찾아 그래프로 보여주는 옵시디언 입문 도우미">
+  <meta name="description" content="AI로 노트를 연결·정리하고 옵시디언을 배울 수 있는 입문 도우미">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
-  <!-- 헤더 -->
   <header class="site-header">
-    <a href="#home" class="logo">🌲 정리의 숲</a>
-    <button class="hamburger" id="hamburger" aria-label="메뉴 열기" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
-    <nav class="site-nav" id="site-nav">
-      <a href="#home">홈</a>
-      <a href="#workspace">아이디어 그래프</a>
-      <a href="#tools">AI 도구</a>
-      <a href="#guide">가이드·FAQ</a>
+    <a href="index.html" class="logo">🌲 정리의 숲</a>
+    <div class="header-actions">
+      <button class="theme-toggle" type="button" aria-label="라이트 모드로 전환" title="테마 전환">☀️</button>
+      <button class="hamburger" aria-label="메뉴 열기" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+    <nav class="site-nav">
+      <a href="index.html" aria-current="page">홈</a>
+      <a href="workspace.html">아이디어 그래프</a>
+      <a href="tools.html">AI 도구</a>
+      <a href="guide.html">가이드·FAQ</a>
     </nav>
   </header>
 
   <main>
-    <!-- Hero -->
-    <section id="home" class="hero">
+    <section class="hero">
+      <p class="eyebrow">OBSIDIAN STARTER</p>
       <h1>흩어진 아이디어, <span class="accent">숲</span>이 되다</h1>
-      <p>메모는 쌓이는데 연결이 안 되나요? 노트를 적으면 AI가 아이디어 사이의 숨은 연결을 찾아 그래프로 보여드려요.</p>
-      <p>옵시디언이 처음이어도 괜찮아요. 여기서 연결의 감각을 익히고, 내 Vault로 가져가세요.</p>
-      <a href="#workspace" class="btn btn-primary btn-lg">내 아이디어 연결해보기</a>
+      <p>메모는 쌓이는데 연결이 안 되나요? AI가 노트 사이의 숨은 연결을 찾아, 다음 생각으로 나아갈 길을 보여드려요.</p>
+      <a href="workspace.html" class="btn btn-primary btn-lg">내 아이디어 연결해보기</a>
     </section>
 
-    <!-- 아이디어 그래프 (핵심) -->
-    <section id="workspace">
-      <h2>아이디어 그래프</h2>
-      <p class="section-desc">생각나는 대로 노트를 추가하고, AI에게 연결 분석을 맡겨보세요.</p>
-
-      <div class="note-form card">
-        <input type="text" id="note-title" placeholder="노트 제목" maxlength="100">
-        <textarea id="note-content" placeholder="내용을 적어주세요 (최대 500자)" maxlength="500" rows="4"></textarea>
-        <div class="form-footer">
-          <span class="char-count"><span id="note-char-count">0</span>/500</span>
-          <button id="add-note-btn" class="btn btn-primary">노트 추가</button>
-        </div>
-        <p id="note-form-msg" class="error-msg" hidden></p>
-      </div>
-
-      <div id="notes-list" class="notes-grid"></div>
-      <p id="notes-empty" class="muted">아직 노트가 없어요. 첫 노트를 추가해보세요!</p>
-
-      <div class="analyze-bar">
-        <button id="analyze-btn" class="btn btn-primary btn-lg" disabled>AI 연결 분석</button>
-        <p id="analyze-hint" class="muted">노트가 2개 이상이면 분석할 수 있어요.</p>
-      </div>
-      <div id="analyze-status"></div>
-
-      <div id="result-area" class="result-area" hidden>
-        <h3>분석 결과</h3>
-        <div class="result-layout">
-          <div class="graph-wrap card">
-            <canvas id="graph"></canvas>
-          </div>
-          <div class="links-wrap">
-            <div id="links-list"></div>
-            <button id="copy-md-btn" class="btn btn-secondary">옵시디언용 마크다운 복사</button>
-          </div>
-        </div>
+    <section class="feature-section">
+      <h2>생각을 돌보는 네 가지 공간</h2>
+      <div class="feature-grid">
+        <a class="card feature-card" href="workspace.html"><span>🕸️</span><h3>아이디어 그래프</h3><p>메모를 모아 AI가 의미 있는 연결과 태그를 찾아줘요.</p></a>
+        <a class="card feature-card" href="tools.html#organize"><span>✍️</span><h3>노트 정리기</h3><p>두서없는 메모를 옵시디언용 마크다운으로 바꿔요.</p></a>
+        <a class="card feature-card" href="tools.html#chat"><span>💬</span><h3>Q&A 챗봇</h3><p>옵시디언을 처음 시작할 때 궁금한 점을 물어보세요.</p></a>
+        <a class="card feature-card" href="guide.html"><span>📚</span><h3>가이드·FAQ</h3><p>Vault부터 내부링크까지 핵심 개념을 차근히 익혀요.</p></a>
       </div>
     </section>
 
-    <!-- AI 도구 -->
-    <section id="tools">
-      <h2>AI 도구</h2>
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="tab-organize">노트 정리기</button>
-        <button class="tab-btn" data-tab="tab-chat">Q&amp;A 챗봇</button>
-      </div>
-
-      <div id="tab-organize" class="tab-panel active">
-        <p class="section-desc">두서없는 메모를 붙여넣으면 옵시디언 형식(태그·내부링크 포함)으로 정리해드려요.</p>
-        <div class="card">
-          <textarea id="organize-input" placeholder="정리할 메모를 붙여넣어주세요 (최대 5,000자)" maxlength="5000" rows="8"></textarea>
-          <div class="form-footer">
-            <span class="char-count"><span id="organize-char-count">0</span>/5000</span>
-            <button id="organize-btn" class="btn btn-primary">정리하기</button>
-          </div>
-        </div>
-        <div id="organize-status"></div>
-        <div id="organize-result-wrap" hidden>
-          <pre id="organize-result"></pre>
-          <button id="organize-copy-btn" class="btn btn-secondary">복사</button>
-        </div>
-      </div>
-
-      <div id="tab-chat" class="tab-panel">
-        <p class="section-desc">옵시디언에 대해 무엇이든 물어보세요.</p>
-        <div class="chat-box card">
-          <div id="chat-messages" class="chat-messages">
-            <div class="bubble ai">안녕하세요! 옵시디언에 대해 궁금한 걸 물어보세요. 예: "Vault가 뭐예요?"</div>
-          </div>
-          <div id="chat-status"></div>
-          <div class="chat-input-row">
-            <input type="text" id="chat-input" placeholder="질문을 입력해주세요 (최대 500자)" maxlength="500">
-            <button id="chat-send-btn" class="btn btn-primary">전송</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 가이드·FAQ -->
-    <section id="guide">
-      <h2>옵시디언 핵심 개념</h2>
-      <div class="concept-grid">
-        <div class="card concept-card">
-          <div class="concept-icon">🗄️</div>
-          <h3>Vault</h3>
-          <p>노트가 모여 있는 폴더 하나가 곧 Vault예요. 옵시디언은 이 폴더 안의 파일을 그대로 읽고 쓰기 때문에, 내 노트는 언제나 내 컴퓨터에 남아요.</p>
-        </div>
-        <div class="card concept-card">
-          <div class="concept-icon">📝</div>
-          <h3>노트</h3>
-          <p>하나의 마크다운(.md) 파일이 하나의 노트예요. 하나의 노트에는 하나의 생각만 담는 것이 연결을 만들기 좋은 습관이에요.</p>
-        </div>
-        <div class="card concept-card">
-          <div class="concept-icon">🏷️</div>
-          <h3>태그</h3>
-          <p><code>#생산성</code>처럼 #을 붙여 노트를 분류해요. 폴더와 달리 한 노트에 여러 태그를 달 수 있어 유연하게 묶을 수 있어요.</p>
-        </div>
-        <div class="card concept-card">
-          <div class="concept-icon">🔗</div>
-          <h3>내부링크</h3>
-          <p><code>[[노트 제목]]</code>이라고 쓰면 다른 노트로 연결돼요. 이 링크가 쌓이면서 노트들이 서로 이어진 지식 네트워크가 만들어져요.</p>
-        </div>
-        <div class="card concept-card">
-          <div class="concept-icon">🕸️</div>
-          <h3>그래프 뷰</h3>
-          <p>노트(점)와 링크(선)를 한눈에 보여주는 지도예요. 위의 아이디어 그래프가 바로 이 그래프 뷰의 축소판이에요.</p>
-        </div>
-      </div>
-
-      <h2>자주 묻는 질문</h2>
-      <div class="faq">
-        <details class="card">
-          <summary>여기 적은 노트는 어디에 저장되나요?</summary>
-          <p>내 브라우저의 localStorage에만 저장돼요. 서버에는 저장하지 않으며, AI 분석 요청 시에만 노트 내용이 전송돼요. 브라우저 데이터를 지우면 노트도 사라지니 중요한 내용은 복사해두세요.</p>
-        </details>
-        <details class="card">
-          <summary>옵시디언은 유료인가요?</summary>
-          <p>개인 사용은 무료예요. 기기 간 동기화(Obsidian Sync)나 웹 게시(Publish) 같은 부가 서비스만 유료예요.</p>
-        </details>
-        <details class="card">
-          <summary>AI가 찾은 연결을 옵시디언으로 어떻게 가져가나요?</summary>
-          <p>분석 결과의 "옵시디언용 마크다운 복사" 버튼을 누르면 <code>[[내부링크]]</code>와 태그가 포함된 마크다운이 복사돼요. 옵시디언 새 노트에 붙여넣으면 링크가 바로 인식돼요.</p>
-        </details>
-        <details class="card">
-          <summary>노트는 몇 개까지 분석할 수 있나요?</summary>
-          <p>한 번에 2개 이상 20개 이하의 노트를 분석할 수 있어요. 노트 하나당 내용은 500자까지 적을 수 있어요.</p>
-        </details>
-        <details class="card">
-          <summary>챗봇이 옵시디언과 관계없는 질문에도 답하나요?</summary>
-          <p>이 챗봇은 옵시디언 전문 도우미라서, 무관한 질문은 정중히 사양하고 옵시디언 관련 질문을 안내해드려요.</p>
-        </details>
+    <section class="stats-section card" aria-labelledby="stats-title">
+      <div><p class="eyebrow">MY ACTIVITY</p><h2 id="stats-title">이 브라우저의 숲 기록</h2><p class="section-desc">개인 정보 없이 이 기기 안에서만 저장되는 간단한 사용 기록이에요.</p></div>
+      <div class="stats-grid">
+        <div><strong id="visit-count">0</strong><span>방문</span></div>
+        <div><strong id="saved-note-count">0</strong><span>저장한 노트</span></div>
+        <div><strong id="ai-use-count">0</strong><span>AI 사용</span></div>
       </div>
     </section>
   </main>
 
-  <footer class="site-footer">
-    <span>🌲 정리의 숲</span>
-    <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
-  </footer>
-
-  <script src="js/notes.js"></script>
-  <script src="js/graph.js"></script>
-  <script src="js/main.js"></script>
+  <footer class="site-footer"><span>🌲 정리의 숲</span><span>내 노트는 내 브라우저에만 저장돼요.</span></footer>
+  <script src="js/common.js"></script>
 </body>
 </html>

@@ -35,10 +35,14 @@ vercel dev
 
 ```
 obsidian-helper/
-├── index.html          # 단일 페이지 (홈/그래프/도구/가이드)
+├── index.html          # 홈
+├── workspace.html      # 아이디어 그래프
+├── tools.html          # AI 노트 정리기 · Q&A 챗봇
+├── guide.html          # 옵시디언 가이드 · FAQ
 ├── css/style.css       # 다크 테마 + 반응형
 ├── js/
-│   ├── main.js         # 네비게이션, 탭, fetch 헬퍼, AI 기능 연결
+│   ├── common.js       # 공통 메뉴, 테마, 브라우저 내 활동 통계
+│   ├── main.js         # 탭, fetch 헬퍼, AI 기능 연결
 │   ├── notes.js        # 노트 CRUD + localStorage
 │   └── graph.js        # canvas 그래프 렌더링
 ├── api/
@@ -48,3 +52,13 @@ obsidian-helper/
 ├── requirements.txt
 └── vercel.json
 ```
+
+## 보너스 기능
+
+- 다크/라이트 테마 전환: 선택한 테마를 브라우저에 저장해 다음 방문에도 유지해요.
+- 마이크로 인터랙션: 버튼·카드 hover, AI 로딩 표시, 복사 완료 피드백을 제공해요.
+- 간단한 사용 통계: 방문 수, 저장한 노트 수, AI 사용 수를 이 브라우저의 localStorage에만 저장해 보여줘요. 외부 분석 도구로 전송하지 않아요.
+
+## 서비스 기획서
+
+서비스 목적, 타겟 사용자, 페이지 구성, AI 기능의 입력·출력·실패 처리 기준은 [SERVICE_PLAN.md](SERVICE_PLAN.md)에서 확인할 수 있어요.

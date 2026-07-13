@@ -15,6 +15,7 @@ function getNotes() {
 
 function saveNotes(notes) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  localStorage.setItem('forest_note_count', String(notes.length));
 }
 
 function addNote(title, content) {
