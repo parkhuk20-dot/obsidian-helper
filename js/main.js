@@ -54,6 +54,27 @@ if (document.getElementById('note-title')) {
     finally { updateAnalyzeButton(); }
   });
 
+  document.getElementById('demo-graph-btn').addEventListener('click', () => {
+    const demoNotes = [
+      { id: 'demo-1', title: '아침 루틴 개선', content: '출근 전 20분 동안 오늘의 우선순위와 할 일을 정리하는 습관을 만들고 싶다.' },
+      { id: 'demo-2', title: '집중 시간을 늘리는 방법', content: '25분 집중과 5분 휴식을 반복하고 알림을 끄면 중요한 작업에 더 오래 몰입할 수 있다.' },
+      { id: 'demo-3', title: '주간 회고 노트', content: '매주 금요일에 잘한 일과 아쉬운 일을 기록하고 다음 주에 바꿀 한 가지를 정한다.' },
+      { id: 'demo-4', title: '독서 메모 습관', content: '책에서 기억할 문장과 떠오른 생각을 짧은 노트로 남겨 다른 아이디어와 연결한다.' },
+      { id: 'demo-5', title: '나만의 지식 관리', content: '작은 메모를 태그와 내부링크로 이어서 나중에 다시 찾을 수 있는 지식 지도를 만든다.' },
+    ];
+    const demoLinks = [
+      { from: 'demo-1', to: 'demo-2', reason: '아침에 우선순위를 정하고 집중 시간을 확보하는 흐름으로 이어져요.' },
+      { from: 'demo-1', to: 'demo-3', reason: '루틴의 실천 결과를 주간 회고로 점검할 수 있어요.' },
+      { from: 'demo-2', to: 'demo-4', reason: '집중 시간은 독서와 메모 습관을 꾸준히 만드는 기반이 돼요.' },
+      { from: 'demo-4', to: 'demo-5', reason: '독서 메모를 연결하면 개인 지식 관리 체계가 자라나요.' },
+      { from: 'demo-3', to: 'demo-5', reason: '회고 기록은 내 지식 관리 방식도 지속적으로 개선하게 해줘요.' },
+    ];
+    const demoTags = { 'demo-1': ['#루틴', '#생산성'], 'demo-2': ['#집중', '#몰입'], 'demo-3': ['#회고', '#성장'], 'demo-4': ['#독서', '#메모'], 'demo-5': ['#PKM', '#지식관리'] };
+    lastAnalysis = { notes: demoNotes, links: demoLinks, tags: demoTags };
+    analyzeStatus.innerHTML = '<p class="muted">예시 데이터로 그래프를 표시했어요. AI 키를 설정한 뒤에는 내 노트로 분석해보세요.</p>';
+    renderResult(lastAnalysis);
+  });
+
   function renderResult({ notes, links, tags }) {
     const byId = Object.fromEntries(notes.map((n) => [n.id, n]));
     const linksList = document.getElementById('links-list'); linksList.innerHTML = '';
