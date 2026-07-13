@@ -1,106 +1,15 @@
-// canvas 그래프 렌더링 — 원형(circular) 배치
-let lastGraphData = null;
-
-function renderGraph(notes, links) {
-  lastGraphData = { notes, links };
-
-  const canvas = document.getElementById('graph');
-  const wrap = canvas.parentElement;
-  const width = wrap.clientWidth - 20; // 카드 패딩 고려
-  const height = notes.length > 30
-    ? Math.max(520, Math.min(width * 0.85, 680))
-    : Math.max(320, Math.min(width * 0.8, 480));
-
-  // 레티나 대응
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
-  canvas.style.height = `${height}px`;
-
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, width, height);
-
-  if (!notes.length) return;
-
-  const styles = getComputedStyle(document.documentElement);
-  const accent = styles.getPropertyValue('--accent').trim() || '#a78bfa';
-  const gray = '#6b6b7d';
-  const textColor = styles.getPropertyValue('--text').trim() || '#e4e4e7';
-
-  const pos = {};
-  const clustered = notes.length > 30;
-  if (clustered) {
-    // 대용량 메모는 제목 앞부분(예: 생산성 · 메모 1)별로 묶어 읽기 쉽게 배치한다.
-    const groups = new Map();
-    notes.forEach((note) => {
-      const groupName = note.title.split(' · ')[0];
-      if (!groups.has(groupName)) groups.set(groupName, []);
-      groups.get(groupName).push(note);
-    });
-    const groupEntries = [...groups.entries()];
-    const columns = width >= 760 ? 5 : 2;
-    const rows = Math.ceil(groupEntries.length / columns);
-    const cellWidth = width / columns;
-    const cellHeight = height / rows;
-    groupEntries.forEach(([groupName, groupNotes], groupIndex) => {
-      const col = groupIndex % columns; const row = Math.floor(groupIndex / columns);
-      const left = col * cellWidth; const top = row * cellHeight;
-      ctx.fillStyle = gray; ctx.font = '600 12px sans-serif'; ctx.textAlign = 'left';
-      ctx.fillText(groupName, left + 14, top + 20);
-      groupNotes.forEach((note, index) => {
-        pos[note.id] = { x: left + 28 + (index % 5) * ((cellWidth - 56) / 4), y: top + 48 + Math.floor(index / 5) * 34 };
-      });
-    });
-  } else {
-    const cx = width / 2; const cy = height / 2; const radius = Math.min(width, height) / 2 - 50;
-    notes.forEach((note, i) => {
-      const angle = (2 * Math.PI * i) / notes.length - Math.PI / 2;
-      pos[note.id] = { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
-    });
-  }
-
-  const connected = new Set();
-  for (const link of links) {
-    connected.add(link.from);
-    connected.add(link.to);
-  }
-
-  // 연결선
-  ctx.strokeStyle = accent;
-  ctx.globalAlpha = 0.55;
-  ctx.lineWidth = 1.5;
-  for (const link of links) {
-    const a = pos[link.from];
-    const b = pos[link.to];
-    if (!a || !b) continue;
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-
-  // 노드 + 제목
-  ctx.font = '12px sans-serif';
-  ctx.textAlign = 'center';
-  for (const note of notes) {
-    const { x, y } = pos[note.id];
-    const isConnected = connected.has(note.id);
-
-    ctx.beginPath();
-    ctx.arc(x, y, isConnected ? 9 : 7, 0, 2 * Math.PI);
-    ctx.fillStyle = isConnected ? accent : gray;
-    ctx.fill();
-
-    if (!clustered) {
-      const label = note.title.length > 10 ? note.title.slice(0, 10) + '…' : note.title;
-      ctx.fillStyle = isConnected ? textColor : gray;
-      ctx.fillText(label, x, y + 24);
-    }
-  }
+// 자유 배치 그래프: 노드는 드래그, 호버, 클릭할 수 있다.
+let lastGraphData = null; let nodePositions = {}; let graphCanvas; let graphWrap; let draggingId = null; let dragMoved = false;
+function hash(value) { return [...value].reduce((total, char) => ((total * 31) + char.charCodeAt(0)) >>> 0, 7); }
+function positionNodes(notes, width, height) { notes.forEach((note) => { if (!nodePositions[note.id]) { const seed = hash(note.id); nodePositions[note.id] = { x: width * (0.08 + ((seed % 1000) / 1000) * 0.84), y: height * (0.1 + (((seed / 1000) % 1000) / 1000) * 0.8) }; } nodePositions[note.id].x = Math.max(16, Math.min(width - 16, nodePositions[note.id].x)); nodePositions[note.id].y = Math.max(16, Math.min(height - 16, nodePositions[note.id].y)); }); }
+function canvasPoint(event) { const rect = graphCanvas.getBoundingClientRect(); return { x: event.clientX - rect.left, y: event.clientY - rect.top }; }
+function hitTest(point) { if (!lastGraphData) return null; return lastGraphData.notes.find((note) => { const pos = nodePositions[note.id]; return pos && Math.hypot(pos.x - point.x, pos.y - point.y) < 13; }) || null; }
+function showDetail(note) { const detail = document.getElementById('graph-detail'); if (!detail) return; detail.hidden = false; document.getElementById('graph-detail-title').textContent = note.title; document.getElementById('graph-detail-content').textContent = note.content; }
+function showTooltip(note, point) { const tooltip = document.getElementById('graph-tooltip'); if (!tooltip) return; tooltip.textContent = note.title; tooltip.style.left = `${point.x + 14}px`; tooltip.style.top = `${point.y + 14}px`; tooltip.hidden = false; }
+function drawGraph() { const { notes, links } = lastGraphData; const width = graphCanvas.clientWidth; const height = Math.max(440, Math.min(width * 0.72, 640)); const dpr = window.devicePixelRatio || 1; graphCanvas.width = width * dpr; graphCanvas.height = height * dpr; graphCanvas.style.height = `${height}px`; const ctx = graphCanvas.getContext('2d'); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, width, height); positionNodes(notes, width, height); const styles = getComputedStyle(document.documentElement); const accent = styles.getPropertyValue('--accent').trim(); const muted = styles.getPropertyValue('--muted').trim();
+  ctx.strokeStyle = accent; ctx.globalAlpha = 0.32; ctx.lineWidth = 1.2; links.forEach((link) => { const from = nodePositions[link.from]; const to = nodePositions[link.to]; if (!from || !to) return; ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke(); }); ctx.globalAlpha = 1;
+  notes.forEach((note) => { const pos = nodePositions[note.id]; ctx.beginPath(); ctx.arc(pos.x, pos.y, notes.length > 40 ? 5 : 8, 0, Math.PI * 2); ctx.fillStyle = accent; ctx.fill(); ctx.strokeStyle = muted; ctx.globalAlpha = 0.4; ctx.stroke(); ctx.globalAlpha = 1; });
 }
-
-window.addEventListener('resize', () => {
-  if (lastGraphData) renderGraph(lastGraphData.notes, lastGraphData.links);
-});
+function bindGraphEvents() { graphCanvas.addEventListener('pointerdown', (event) => { const note = hitTest(canvasPoint(event)); if (!note) return; draggingId = note.id; dragMoved = false; graphCanvas.setPointerCapture(event.pointerId); }); graphCanvas.addEventListener('pointermove', (event) => { const point = canvasPoint(event); const note = hitTest(point); if (draggingId) { nodePositions[draggingId] = point; dragMoved = true; drawGraph(); return; } graphCanvas.style.cursor = note ? 'grab' : 'default'; const tooltip = document.getElementById('graph-tooltip'); if (note) showTooltip(note, point); else tooltip.hidden = true; }); graphCanvas.addEventListener('pointerup', (event) => { const activeId = draggingId; const note = hitTest(canvasPoint(event)); if (activeId && !dragMoved && note) showDetail(note); draggingId = null; if (activeId) graphCanvas.releasePointerCapture(event.pointerId); }); graphCanvas.addEventListener('pointerleave', () => { if (!draggingId) document.getElementById('graph-tooltip').hidden = true; }); }
+function renderGraph(notes, links) { lastGraphData = { notes, links }; nodePositions = {}; graphCanvas = document.getElementById('graph'); graphWrap = graphCanvas.parentElement; if (!graphCanvas.dataset.interactive) { bindGraphEvents(); graphCanvas.dataset.interactive = 'true'; } drawGraph(); }
+window.addEventListener('resize', () => { if (lastGraphData) drawGraph(); });

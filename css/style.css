@@ -285,6 +285,12 @@ main { padding-top: var(--header-h); }
 .graph-wrap { padding: 10px; }
 .graph-wrap:hover { transform: none; box-shadow: none; }
 #graph { width: 100%; display: block; }
+.interactive-graph { display: grid; grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr); gap: 18px; padding: 12px; }
+.interactive-graph .graph-wrap { position: relative; min-height: 440px; }
+.graph-tooltip { background: var(--text); border-radius: 6px; color: var(--bg); font-size: 0.8rem; max-width: 180px; padding: 6px 8px; pointer-events: none; position: absolute; z-index: 2; }
+.graph-detail { border-left: 1px solid var(--border); padding: 18px; }
+.graph-detail h2 { font-size: 1.1rem; word-break: break-all; }
+.graph-detail p:last-child { color: var(--muted); font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; }
 
 .links-wrap { display: flex; flex-direction: column; gap: 12px; }
 .link-card {
@@ -472,6 +478,8 @@ main { padding-top: var(--header-h); }
   .model-settings { align-items: flex-start; flex-direction: column; }
 
   .result-layout { grid-template-columns: 1fr; }
+  .interactive-graph { grid-template-columns: 1fr; }
+  .graph-detail { border-left: 0; border-top: 1px solid var(--border); }
   .chat-messages { height: 320px; }
   .bubble { max-width: 88%; }
 }
