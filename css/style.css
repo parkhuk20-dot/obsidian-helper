@@ -160,6 +160,14 @@ main { padding-top: var(--header-h); }
 .stats-grid strong { display: block; color: var(--accent); font-size: 1.6rem; }
 .stats-grid span { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
 
+.effect-section { margin-bottom: 72px; }
+.funnel-list { display: flex; flex-direction: column; gap: 6px; margin: 18px 0; }
+.funnel-row { display: flex; align-items: center; justify-content: space-between; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; }
+.funnel-label { color: var(--text); font-size: 0.9rem; }
+.funnel-value { color: var(--accent); font-size: 0.9rem; font-weight: 600; }
+.effect-snapshot-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.effect-snapshot-row .muted { margin: 0; flex: 1; min-width: 200px; }
+
 /* ===== 버튼 ===== */
 .btn {
   display: inline-block;

@@ -11,6 +11,32 @@ function showError(el, msg) { el.innerHTML = ''; const p = document.createElemen
 async function copyText(text, btn) { try { await navigator.clipboard.writeText(text); const original = btn.textContent; btn.textContent = '복사됐어요!'; setTimeout(() => { btn.textContent = original; }, 1500); } catch { alert('복사에 실패했어요. 직접 선택해서 복사해주세요'); } }
 function updateAnalyzeButton() {}
 
+// 운영 자동화(보너스): 노트를 Notion 데이터베이스에 저장하고 Discord로 알린다.
+// 두 연동 모두 서버 환경 변수가 없으면 조용히 건너뛴다 — 실패해도 노트 저장 자체엔 영향 없다.
+async function syncNoteInBackground(title, content, keywords) {
+  const syncStatus = document.getElementById('sync-status');
+  const showSync = (text) => {
+    if (!syncStatus) return;
+    syncStatus.textContent = text;
+    syncStatus.hidden = false;
+    setTimeout(() => { syncStatus.hidden = true; }, 4000);
+  };
+  try {
+    const sync = await callApi('/api/sync', { title, content, keywords });
+    if (sync.notion === 'sent') logEvent('sync_notion_sent');
+    if (sync.discord === 'sent') logEvent('sync_discord_sent');
+    if (sync.notion === 'sent' || sync.discord === 'sent') {
+      const sent = [sync.notion === 'sent' && 'Notion', sync.discord === 'sent' && 'Discord'].filter(Boolean);
+      showSync(`☁️ ${sent.join('·')}로 전송했어요`);
+    } else if (sync.notion === 'error' || sync.discord === 'error') {
+      showSync('☁️ 외부 연동 중 일부가 실패했어요 (노트 저장에는 영향 없어요)');
+    }
+    // 둘 다 skipped(미설정)면 아무 표시도 하지 않는다
+  } catch {
+    // sync 자체가 실패해도 노트 저장 흐름은 이미 끝났으므로 조용히 무시
+  }
+}
+
 // 노트 작성: 저장할 때 AI가 키워드 3개를 뽑아 노트를 연결한다
 if (document.getElementById('note-title')) {
   const title = document.getElementById('note-title');
@@ -37,9 +63,10 @@ if (document.getElementById('note-title')) {
       const existing = [...new Set(getNotes().flatMap((note) => noteKeywords(note)))];
       const data = await callApi('/api/keywords', { title: titleValue, content: contentValue, existing_keywords: existing, ai: getAiSettings() });
       keywords = Array.isArray(data.keywords) ? data.keywords : [];
-      recordAiUse();
+      recordAiUse('keyword_ai_success');
     } catch (err) {
       warning = `AI 키워드 연결에 실패해 키워드 없이 저장했어요. (${errorMessage(err)})`;
+      logEvent('keyword_ai_fail');
     } finally {
       addBtn.textContent = originalLabel;
       addBtn.disabled = false;
@@ -47,12 +74,18 @@ if (document.getElementById('note-title')) {
 
     const result = addNote(titleValue, contentValue, keywords);
     if (!result.ok) { message.textContent = result.error; message.hidden = false; return; }
+    logEvent('note_saved');
     title.value = '';
     content.value = '';
     document.getElementById('note-char-count').textContent = '0';
     if (warning) { message.textContent = warning; message.hidden = false; } else { message.hidden = true; }
     renderNotes();
     updateActivityView();
+    if (typeof renderEffectPanel === 'function') renderEffectPanel();
+
+    // 운영 자동화(보너스): Notion 저장·Discord 알림은 백그라운드로 시도한다.
+    // 이미 완료된 노트 저장을 막지 않도록 await하지 않고, 결과만 나중에 살짝 알려준다.
+    syncNoteInBackground(titleValue, contentValue, keywords);
   });
 
   renderNotes();
@@ -62,11 +95,11 @@ if (document.getElementById('note-title')) {
 if (document.getElementById('organize-input')) {
   const organizeInput = document.getElementById('organize-input'); const organizeBtn = document.getElementById('organize-btn'); const organizeStatus = document.getElementById('organize-status'); const organizeResultWrap = document.getElementById('organize-result-wrap'); const organizeResult = document.getElementById('organize-result');
   organizeInput.addEventListener('input', () => { document.getElementById('organize-char-count').textContent = organizeInput.value.length; });
-  organizeBtn.addEventListener('click', async () => { const note = organizeInput.value.trim(); if (!note) return showError(organizeStatus, '내용을 입력해주세요'); organizeBtn.disabled = true; organizeResultWrap.hidden = true; showLoading(organizeStatus, true); try { const data = await callApi('/api/organize', { note, ai: getAiSettings() }); showLoading(organizeStatus, false); organizeResult.textContent = data.result; organizeResultWrap.hidden = false; recordAiUse(); updateActivityView(); } catch (err) { showError(organizeStatus, errorMessage(err)); } finally { organizeBtn.disabled = false; } });
+  organizeBtn.addEventListener('click', async () => { const note = organizeInput.value.trim(); if (!note) return showError(organizeStatus, '내용을 입력해주세요'); organizeBtn.disabled = true; organizeResultWrap.hidden = true; showLoading(organizeStatus, true); try { const data = await callApi('/api/organize', { note, ai: getAiSettings() }); showLoading(organizeStatus, false); organizeResult.textContent = data.result; organizeResultWrap.hidden = false; recordAiUse('organize_success'); updateActivityView(); } catch (err) { showError(organizeStatus, errorMessage(err)); } finally { organizeBtn.disabled = false; } });
   document.getElementById('organize-copy-btn').addEventListener('click', (e) => copyText(organizeResult.textContent, e.target));
   const tabs = document.querySelectorAll('.tab-btn'); function openTab(id) { tabs.forEach((button) => button.classList.toggle('active', button.dataset.tab === id)); document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.toggle('active', panel.id === id)); } tabs.forEach((button) => button.addEventListener('click', () => openTab(button.dataset.tab))); if (location.hash === '#chat') openTab('tab-chat');
   const chatMessages = document.getElementById('chat-messages'); const chatInput = document.getElementById('chat-input'); const chatSendBtn = document.getElementById('chat-send-btn'); const chatStatus = document.getElementById('chat-status'); const chatHistory = [];
   function appendBubble(role, text) { const div = document.createElement('div'); div.className = `bubble ${role === 'user' ? 'me' : 'ai'}`; div.textContent = text; chatMessages.appendChild(div); chatMessages.scrollTop = chatMessages.scrollHeight; }
-  async function sendChat() { const question = chatInput.value.trim(); if (!question) return showError(chatStatus, '내용을 입력해주세요'); chatStatus.innerHTML = ''; chatInput.value = ''; appendBubble('user', question); chatHistory.push({ role: 'user', content: question }); chatSendBtn.disabled = true; chatInput.disabled = true; showLoading(chatStatus, true); try { const data = await callApi('/api/chat', { messages: chatHistory.slice(-10), ai: getAiSettings() }); showLoading(chatStatus, false); chatHistory.push({ role: 'assistant', content: data.reply }); appendBubble('assistant', data.reply); recordAiUse(); updateActivityView(); } catch (err) { showError(chatStatus, errorMessage(err)); } finally { chatSendBtn.disabled = false; chatInput.disabled = false; chatInput.focus(); } }
+  async function sendChat() { const question = chatInput.value.trim(); if (!question) return showError(chatStatus, '내용을 입력해주세요'); chatStatus.innerHTML = ''; chatInput.value = ''; appendBubble('user', question); chatHistory.push({ role: 'user', content: question }); chatSendBtn.disabled = true; chatInput.disabled = true; showLoading(chatStatus, true); try { const data = await callApi('/api/chat', { messages: chatHistory.slice(-10), ai: getAiSettings() }); showLoading(chatStatus, false); chatHistory.push({ role: 'assistant', content: data.reply }); appendBubble('assistant', data.reply); recordAiUse('chat_success'); updateActivityView(); } catch (err) { showError(chatStatus, errorMessage(err)); } finally { chatSendBtn.disabled = false; chatInput.disabled = false; chatInput.focus(); } }
   chatSendBtn.addEventListener('click', sendChat); chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) sendChat(); });
 }

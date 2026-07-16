@@ -47,7 +47,7 @@ analyzeBtn.addEventListener('click', async () => {
     // 키워드 연결과 의미 연결을 합쳐서 그린다
     const merged = [...linksFromKeywords(notes), ...(data.links || [])];
     renderResult({ notes, links: merged, tags: data.tags || {} });
-    recordAiUse();
+    recordAiUse('graph_analyze');
   } catch (err) {
     showError(analyzeStatus, errorMessage(err));
   } finally {

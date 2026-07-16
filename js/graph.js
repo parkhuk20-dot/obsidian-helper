@@ -15,6 +15,8 @@
   let hoverId = null, dragId = null, dragMoved = false, dragStart = null;
   let panning = false, panPointerStart = null, panViewStart = null;
   let bound = false;
+  let pendingFit = false;    // 새 데이터가 안정되면 화면에 맞춰 자동으로 카메라를 조정한다
+  let resizePending = false; // 리사이즈 이벤트를 한 프레임으로 묶어서 처리한다
 
   // 물리 상수 (노드 20개 안팎 기준으로 조정) — 좌표는 화면 픽셀이 아닌 자유로운 "월드" 단위
   const REPULSION = 5200;   // 노드끼리 밀어내는 힘
@@ -24,10 +26,12 @@
   const DAMPING = 0.82;     // 속도 감쇠
   const MIN_ENERGY = 0.04;  // 이보다 잠잠해지면 시뮬레이션 정지
 
-  // 노드 크기: 연결이 가장 많은 노드가 NODE_MAX_R(현재 가장 큰 형태=18px로 고정),
-  // 고립 노드는 NODE_MIN_R. 그 사이는 현재 그래프의 최대 연결 수 대비 비율로 선형 보간한다.
-  const NODE_MIN_R = 5;
-  const NODE_MAX_R = 18;
+  // 노드 크기: 연결이 가장 많은 노드가 NODE_MAX_R(가장 큰 형태=15px로 고정),
+  // 고립 노드는 NODE_MIN_R(1px). 그 사이는 현재 그래프의 최대 연결 수 대비 비율로 선형 보간한다.
+  const NODE_MIN_R = 1;
+  const NODE_MAX_R = 15;
+
+  const FIT_PADDING = 56; // 화면에 맞추기 시 그래프 바깥으로 남겨둘 여백(라벨 공간 포함)
 
   const DIM_ALPHA = 0.15;        // 근접하지 않은 노드·라벨의 반투명 정도
   const DIM_EDGE_ALPHA = 0.09;   // 근접하지 않은 연결선의 반투명 정도
@@ -40,7 +44,15 @@
   function ensureRefs() {
     canvas = document.getElementById('graph');
     ctx = canvas.getContext('2d');
-    if (!bound) { bindEvents(); bound = true; }
+    if (!bound) {
+      bindEvents();
+      if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(scheduleResize).observe(canvas.parentElement);
+      } else {
+        window.addEventListener('resize', scheduleResize); // 구형 브라우저 대체
+      }
+      bound = true;
+    }
   }
 
   function measure() {
@@ -50,8 +62,12 @@
     if (w < 120) {
       const fallback = canvas.closest('.interactive-graph') || wrap.parentElement;
       w = (fallback && fallback.clientWidth) || 600;
+    } else {
+      // wrap의 좌우 패딩만큼은 캔버스가 실제로 차지하는 폭이 아니므로 빼준다
+      const cs = getComputedStyle(wrap);
+      w -= (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
     }
-    width = w;
+    width = Math.max(1, w);
     height = Math.max(440, Math.min(width * 0.72, 640));
     dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
@@ -103,6 +119,28 @@
 
   function reheat() { energy = Infinity; if (!raf) loop(); }
 
+  // 현재 모든 노드가 캔버스 안에 여백을 두고 들어오도록 카메라(팬·줌)를 자동으로 맞춘다
+  function fitToView() {
+    if (!nodes.length) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of nodes) {
+      minX = Math.min(minX, n.x - n.r);
+      maxX = Math.max(maxX, n.x + n.r);
+      minY = Math.min(minY, n.y - n.r);
+      maxY = Math.max(maxY, n.y + n.r);
+    }
+    const graphW = Math.max(maxX - minX, 1);
+    const graphH = Math.max(maxY - minY, 1);
+    const scale = clampScale(Math.min(
+      (width - FIT_PADDING * 2) / graphW,
+      (height - FIT_PADDING * 2) / graphH,
+    ));
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    view.scale = scale;
+    view.tx = width / 2 - cx * scale;
+    view.ty = height / 2 - cy * scale;
+  }
+
   function tick() {
     if (!nodes.length) return;
     for (const n of nodes) { n.fx = 0; n.fy = 0; }
@@ -149,8 +187,13 @@
 
   function loop() {
     tick();
+    const settled = energy <= MIN_ENERGY && !dragId;
+    if (settled && pendingFit) {
+      fitToView();
+      pendingFit = false;
+    }
     draw();
-    if (energy > MIN_ENERGY || dragId) raf = requestAnimationFrame(loop);
+    if (!settled) raf = requestAnimationFrame(loop);
     else raf = null;
   }
 
@@ -333,9 +376,22 @@
     ensureRefs();
     measure();
     buildGraph(noteList, linkList);
+    pendingFit = true; // 물리 시뮬레이션이 안정되면 자동으로 화면에 맞춘다
     reheat();
   }
 
+  // 창 크기뿐 아니라 사이드바 열림/닫힘 등 레이아웃 변화로 캔버스 크기가 바뀌는 경우까지 감지한다
+  function scheduleResize() {
+    if (resizePending) return;
+    resizePending = true;
+    requestAnimationFrame(() => {
+      resizePending = false;
+      if (!nodes.length) return;
+      measure();
+      fitToView(); // 그래프 전체가 항상 새 크기에 맞춰 다시 배율을 잡도록 한다
+      draw();
+    });
+  }
+
   window.renderGraph = renderGraph;
-  window.addEventListener('resize', () => { if (nodes.length) { measure(); reheat(); } });
 })();
