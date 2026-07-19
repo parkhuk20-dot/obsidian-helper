@@ -22,7 +22,12 @@ async function syncNoteInBackground(title, content, keywords) {
     setTimeout(() => { syncStatus.hidden = true; }, 4000);
   };
   try {
-    const sync = await callApi('/api/sync', { title, content, keywords });
+    const integrations = getIntegrations();
+    const payload = { title, content, keywords };
+    if (integrations.discordWebhookUrl) payload.discord_webhook_url = integrations.discordWebhookUrl;
+    if (integrations.notionToken) payload.notion_token = integrations.notionToken;
+    if (integrations.notionDatabaseId) payload.notion_database_id = integrations.notionDatabaseId;
+    const sync = await callApi('/api/sync', payload);
     if (sync.notion === 'sent') logEvent('sync_notion_sent');
     if (sync.discord === 'sent') logEvent('sync_discord_sent');
     if (sync.notion === 'sent' || sync.discord === 'sent') {

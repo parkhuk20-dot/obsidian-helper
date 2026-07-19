@@ -1,6 +1,7 @@
 // 공통 메뉴 · 테마 · 이 브라우저 안에서만 저장되는 간단한 활동 통계
 const ACTIVITY_KEY = 'forest_activity';
 const AI_SETTINGS_KEY = 'forest_ai_settings';
+const INTEGRATIONS_KEY = 'forest_integrations'; // Notion·Discord 연동 정보 — 이 브라우저에만 저장
 const EVENTS_KEY = 'forest_events';       // 타임스탬프가 있는 이벤트 로그 — 퍼널·전후비교에 사용
 const SNAPSHOT_KEY = 'forest_snapshot';   // 사용자가 지정한 "기준 시점"
 const EVENT_CAP = 300;                    // 무한정 쌓이지 않도록 최근 N개만 보관
@@ -149,6 +150,88 @@ function initAiSelector() {
   modelSelect.addEventListener('change', persist);
 }
 
+function getIntegrations() {
+  try {
+    return { notionToken: '', notionDatabaseId: '', discordWebhookUrl: '', ...JSON.parse(localStorage.getItem(INTEGRATIONS_KEY) || '{}') };
+  } catch { return { notionToken: '', notionDatabaseId: '', discordWebhookUrl: '' }; }
+}
+
+function saveIntegrations(settings) { localStorage.setItem(INTEGRATIONS_KEY, JSON.stringify(settings)); }
+
+// 연동 설정 모달: 모든 페이지 헤더에 톱니바퀴 버튼이 있으므로 DOM은 여기서 한 번만 만들어 붙인다
+function buildSettingsModal() {
+  if (document.getElementById('settings-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'settings-modal';
+  modal.className = 'settings-modal';
+  modal.hidden = true;
+  modal.innerHTML = `
+    <div class="settings-panel card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="settings-header">
+        <h2 id="settings-title">연동 설정</h2>
+        <button type="button" class="settings-close" aria-label="닫기">✕</button>
+      </div>
+      <p class="muted">노트를 저장하면 Notion 데이터베이스에 기록하고 Discord로 알려줘요. 값은 이 브라우저에만 저장되고, 노트를 저장할 때만 서버로 함께 전달돼요. 비워두면 꺼져 있어요.</p>
+      <label>Discord Webhook URL
+        <input type="text" id="settings-discord-webhook" placeholder="https://discord.com/api/webhooks/..." autocomplete="off">
+      </label>
+      <label>Notion Integration Token
+        <input type="password" id="settings-notion-token" placeholder="ntn_... 또는 secret_..." autocomplete="off">
+      </label>
+      <label>Notion Database ID
+        <input type="text" id="settings-notion-db" placeholder="32자리 데이터베이스 ID" autocomplete="off">
+      </label>
+      <p class="settings-status" id="settings-status"></p>
+      <div class="settings-footer">
+        <button type="button" class="btn btn-secondary" id="settings-cancel">취소</button>
+        <button type="button" class="btn btn-primary" id="settings-save">저장</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function initSettingsModal() {
+  const toggle = document.querySelector('.settings-toggle');
+  if (!toggle) return;
+  buildSettingsModal();
+  const modal = document.getElementById('settings-modal');
+  const discordInput = document.getElementById('settings-discord-webhook');
+  const tokenInput = document.getElementById('settings-notion-token');
+  const dbInput = document.getElementById('settings-notion-db');
+  const statusEl = document.getElementById('settings-status');
+
+  function renderStatus() {
+    const saved = getIntegrations();
+    const state = (on) => `<span>${on ? '설정됨' : '설정 안 됨'}</span>`;
+    statusEl.innerHTML = `Discord ${state(!!saved.discordWebhookUrl)} · Notion ${state(!!(saved.notionToken && saved.notionDatabaseId))}`;
+  }
+
+  function open() {
+    const saved = getIntegrations();
+    discordInput.value = saved.discordWebhookUrl;
+    tokenInput.value = saved.notionToken;
+    dbInput.value = saved.notionDatabaseId;
+    renderStatus();
+    modal.hidden = false;
+  }
+  function close() { modal.hidden = true; }
+
+  toggle.addEventListener('click', open);
+  modal.querySelector('.settings-close').addEventListener('click', close);
+  document.getElementById('settings-cancel').addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
+  document.getElementById('settings-save').addEventListener('click', () => {
+    saveIntegrations({
+      discordWebhookUrl: discordInput.value.trim(),
+      notionToken: tokenInput.value.trim(),
+      notionDatabaseId: dbInput.value.trim(),
+    });
+    renderStatus();
+    close();
+  });
+}
+
 function updateActivityView() {
   const activity = getActivity();
   let notes = 0;
@@ -193,6 +276,7 @@ saveActivity(activity);
 logEvent('visit');
 updateActivityView();
 initAiSelector();
+initSettingsModal();
 renderEffectPanel();
 document.getElementById('effect-snapshot-btn')?.addEventListener('click', () => {
   saveSnapshotNow();

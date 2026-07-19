@@ -1,7 +1,7 @@
 // 옵시디언 스타일 force-directed 그래프
-// - 기본 상태: 모든 노드가 무채색으로 표시되고 제목 라벨이 항상 보인다 (옵시디언 그래프 뷰와 동일)
-// - 노드에 마우스를 올리거나 끌면: 그 노드와 직접 연결된 노드·선만 보라색(강조색)으로 밝아지고,
-//   나머지는 반투명해진다
+// - 기본 상태: 모든 노드가 무채색 점으로만 표시된다 (제목은 숨김)
+// - 노드에 마우스를 가까이 가져가거나 끌면: 그 노드와 직접 연결된 노드·선만 제목과 함께
+//   보라색(강조색)으로 밝아지고, 나머지는 반투명해진다
 // - 노드를 클릭하면 메모 내용이 보인다
 // - 노드를 끌면 스프링으로 이어진 노트들이 함께 따라온다
 // - 마우스 휠로 확대·축소, 빈 공간을 끌면 화면을 이동한다 (노드는 화면 규격에 갇히지 않는다)
@@ -119,15 +119,21 @@
 
   function reheat() { energy = Infinity; if (!raf) loop(); }
 
-  // 현재 모든 노드가 캔버스 안에 여백을 두고 들어오도록 카메라(팬·줌)를 자동으로 맞춘다
+  // 현재 모든 노드가 캔버스 안에 여백을 두고 들어오도록 카메라(팬·줌)를 자동으로 맞춘다.
+  // 라벨은 호버 시에만 그려지지만, 어느 노드든 호버하면 나타날 수 있으므로
+  // 그 공간까지 미리 bounding box에 포함해 맞춘다.
   function fitToView() {
     if (!nodes.length) return;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    ctx.font = 'bold 12px sans-serif';
     for (const n of nodes) {
-      minX = Math.min(minX, n.x - n.r);
-      maxX = Math.max(maxX, n.x + n.r);
+      const raw = n.title || '';
+      const label = raw.length > 16 ? raw.slice(0, 16) + '…' : raw;
+      const halfLabelW = ctx.measureText(label).width / 2 + 5;
+      minX = Math.min(minX, n.x - n.r, n.x - halfLabelW);
+      maxX = Math.max(maxX, n.x + n.r, n.x + halfLabelW);
       minY = Math.min(minY, n.y - n.r);
-      maxY = Math.max(maxY, n.y + n.r);
+      maxY = Math.max(maxY, n.y + n.r + 21); // 라벨이 노드 아래에 그려지는 만큼 여유를 둔다
     }
     const graphW = Math.max(maxX - minX, 1);
     const graphH = Math.max(maxY - minY, 1);
@@ -197,6 +203,17 @@
     else raf = null;
   }
 
+  // requestAnimationFrame은 브라우저 탭·패널이 백그라운드일 때(document.visibilityState
+  // !== 'visible') 전혀 실행되지 않는다. 그 상태에서 새 그래프를 그리면 물리 시뮬레이션이
+  // 초기 배치에서 영원히 멈추고 fitToView()도 실행되지 못해 화면이 빈 것처럼 보인다.
+  // 그래서 rAF 루프를 시작하기 전에, 동기적으로 최대 WARM_START_STEPS번 물리를 미리
+  // 진행해 첫 렌더가 이미 안정된 배치로 나오게 한다.
+  const WARM_START_STEPS = 300;
+  function warmStart() {
+    let steps = 0;
+    while (energy > MIN_ENERGY && steps < WARM_START_STEPS) { tick(); steps += 1; }
+  }
+
   function draw() {
     if (!ctx) return;
     ctx.clearRect(0, 0, width, height);
@@ -231,8 +248,7 @@
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     }
 
-    // 노드 + 라벨 — 기본 상태는 전부 무채색 + 라벨 항상 표시 (옵시디언 기본 그래프 뷰와 동일)
-    // 상호작용 시: 활성 노드·이웃만 보라색 + 진하게, 나머지는 반투명
+    // 노드 — 기본 상태는 무채색 점만. 상호작용 시: 활성 노드·이웃만 보라색 + 진하게, 나머지는 반투명
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const n of nodes) {
       const highlighted = !activeId || highlightSet.has(n.id);
@@ -248,7 +264,8 @@
         ctx.stroke();
       }
 
-      drawLabel(n, n.id === activeId, text, bg, alpha);
+      // 제목은 마우스를 가까이 가져간 노드와 그 직접 연결 노드에만 보인다
+      if (activeId && highlightSet.has(n.id)) drawLabel(n, n.id === activeId, text, bg, 1);
       ctx.globalAlpha = 1;
     }
 
@@ -298,7 +315,8 @@
         reheat();
         return;
       }
-      // 빈 공간을 잡으면 화면 이동(팬) 시작
+      // 빈 공간을 잡으면 화면 이동(팬) 시작 — 노드가 아닌 곳을 찍은 것이므로 선택 해제
+      hideDetail();
       panning = true; panPointerStart = p; panViewStart = { tx: view.tx, ty: view.ty };
       canvas.style.cursor = 'grabbing';
       try { canvas.setPointerCapture(evt.pointerId); } catch {}
@@ -372,25 +390,34 @@
     document.getElementById('graph-detail-content').textContent = note.content;
   }
 
+  function hideDetail() {
+    const detail = document.getElementById('graph-detail');
+    if (detail && !detail.hidden) detail.hidden = true;
+  }
+
   function renderGraph(noteList, linkList) {
     ensureRefs();
     measure();
     buildGraph(noteList, linkList);
-    pendingFit = true; // 물리 시뮬레이션이 안정되면 자동으로 화면에 맞춘다
-    reheat();
+    pendingFit = true;
+    warmStart(); // rAF를 기다리지 않고 즉시 안정된 배치에 가깝게 만든다
+    if (energy <= MIN_ENERGY) { fitToView(); pendingFit = false; }
+    draw(); // 화면이 백그라운드라 rAF가 아예 안 돌아도 최소 한 번은 그려지도록 직접 호출
+    reheat(); // 남은 미세 조정(또는 대형 그래프의 나머지 수렴)은 이어서 rAF로 처리
   }
 
-  // 창 크기뿐 아니라 사이드바 열림/닫힘 등 레이아웃 변화로 캔버스 크기가 바뀌는 경우까지 감지한다
+  // 창 크기뿐 아니라 사이드바 열림/닫힘 등 레이아웃 변화로 캔버스 크기가 바뀌는 경우까지 감지한다.
+  // requestAnimationFrame은 패널이 백그라운드면 실행되지 않으므로 setTimeout으로 묶는다.
   function scheduleResize() {
     if (resizePending) return;
     resizePending = true;
-    requestAnimationFrame(() => {
+    setTimeout(() => {
       resizePending = false;
       if (!nodes.length) return;
       measure();
       fitToView(); // 그래프 전체가 항상 새 크기에 맞춰 다시 배율을 잡도록 한다
       draw();
-    });
+    }, 0);
   }
 
   window.renderGraph = renderGraph;

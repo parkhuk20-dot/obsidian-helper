@@ -11,10 +11,12 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 
 NOTION_VERSION = '2022-06-28'
 NOTE_MAX_CONTENT = 500
+DISCORD_WEBHOOK_HOSTS = {'discord.com', 'discordapp.com', 'canary.discord.com', 'ptb.discord.com'}
 
 
 def _post_json(url, payload, headers):
@@ -24,9 +26,9 @@ def _post_json(url, payload, headers):
         return resp.status, resp.read()
 
 
-def _sync_notion(title, content, keywords):
-    token = os.environ.get('NOTION_TOKEN')
-    database_id = os.environ.get('NOTION_DATABASE_ID')
+def _sync_notion(title, content, keywords, token=None, database_id=None):
+    token = token or os.environ.get('NOTION_TOKEN')
+    database_id = database_id or os.environ.get('NOTION_DATABASE_ID')
     if not token or not database_id:
         return 'skipped'
 
@@ -56,10 +58,16 @@ def _sync_notion(title, content, keywords):
         return 'error'
 
 
-def _sync_discord(title, content, keywords):
-    webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
+def _sync_discord(title, content, keywords, webhook_url=None):
+    webhook_url = webhook_url or os.environ.get('DISCORD_WEBHOOK_URL')
     if not webhook_url:
         return 'skipped'
+
+    # 사용자가 직접 입력한 URL이 서버 쪽 urlopen으로 그대로 전달되므로,
+    # 실제 Discord 웹훅 호스트인지 확인해 임의의 URL로 요청을 대신 보내는 SSRF를 막는다.
+    parsed = urllib.parse.urlparse(webhook_url)
+    if parsed.scheme != 'https' or parsed.hostname not in DISCORD_WEBHOOK_HOSTS:
+        return 'error'
 
     preview = content if len(content) <= 200 else content[:200] + '…'
     tag_line = ' '.join(f'#{kw}' for kw in keywords) if keywords else '(키워드 없음)'
@@ -91,9 +99,19 @@ class handler(BaseHTTPRequestHandler):
         keywords = [str(k).strip() for k in keywords if str(k).strip()][:3] \
             if isinstance(keywords, list) else []
 
+        def _clean(key):
+            value = body.get(key)
+            return value.strip() if isinstance(value, str) and value.strip() else None
+
         result = {
-            'notion': _sync_notion(title.strip(), content.strip(), keywords),
-            'discord': _sync_discord(title.strip(), content.strip(), keywords),
+            'notion': _sync_notion(
+                title.strip(), content.strip(), keywords,
+                token=_clean('notion_token'), database_id=_clean('notion_database_id'),
+            ),
+            'discord': _sync_discord(
+                title.strip(), content.strip(), keywords,
+                webhook_url=_clean('discord_webhook_url'),
+            ),
         }
         self._send(200, result)
 
