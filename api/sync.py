@@ -21,6 +21,9 @@ DISCORD_WEBHOOK_HOSTS = {'discord.com', 'discordapp.com', 'canary.discord.com', 
 
 def _post_json(url, payload, headers):
     body = json.dumps(payload).encode('utf-8')
+    # urllib의 기본 User-Agent(Python-urllib/x.y)는 Discord의 Cloudflare가 봇으로 간주해
+    # 403(error code 1010)으로 차단한다. 명시적인 UA를 보내야 웹훅이 통과된다.
+    headers = {**headers, 'User-Agent': 'obsidian-helper-sync/1.0'}
     req = urllib.request.Request(url, data=body, headers=headers, method='POST')
     with urllib.request.urlopen(req, timeout=10) as resp:
         return resp.status, resp.read()
