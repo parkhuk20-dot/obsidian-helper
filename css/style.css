@@ -436,6 +436,8 @@ main { padding-top: var(--header-h); }
   max-height: 480px;
   overflow-y: auto;
 }
+.organize-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+#organize-save-msg { margin-top: 8px; }
 
 /* ===== 챗봇 ===== */
 .chat-box { padding: 0; overflow: hidden; }

@@ -96,12 +96,64 @@ if (document.getElementById('note-title')) {
   renderNotes();
 }
 
+// 정리기가 돌려준 마크다운(frontmatter + H1 제목 + 본문)에서 노트 저장에 필요한
+// 제목·내용·키워드를 뽑아낸다. 노트 content는 500자 제한이 있어 넘으면 잘라낸다.
+function parseOrganizedNote(markdown) {
+  let text = markdown.trim();
+  let tags = [];
+
+  const fmMatch = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/);
+  if (fmMatch) {
+    const fm = fmMatch[1];
+    const inlineTags = fm.match(/tags:\s*\[(.*)\]/);
+    if (inlineTags) {
+      tags = inlineTags[1].split(',').map((t) => t.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+    } else {
+      tags = [...fm.matchAll(/^\s*-\s*(.+)$/gm)].map((m) => m[1].trim());
+    }
+    text = text.slice(fmMatch[0].length).trim();
+  }
+
+  const titleMatch = text.match(/^#\s+(.+)$/m);
+  let title = '';
+  if (titleMatch) {
+    title = titleMatch[1].trim();
+    text = (text.slice(0, titleMatch.index) + text.slice(titleMatch.index + titleMatch[0].length)).trim();
+  } else {
+    title = (text.split('\n').find((line) => line.trim()) || '정리된 노트').trim();
+  }
+
+  let content = text.trim();
+  if (content.length > NOTE_MAX_CONTENT) content = content.slice(0, NOTE_MAX_CONTENT - 1) + '…';
+
+  return { title: title.slice(0, 100), content, keywords: tags.slice(0, 3) };
+}
+
 // AI 도구: 노트 정리기 + Q&A 챗봇
 if (document.getElementById('organize-input')) {
   const organizeInput = document.getElementById('organize-input'); const organizeBtn = document.getElementById('organize-btn'); const organizeStatus = document.getElementById('organize-status'); const organizeResultWrap = document.getElementById('organize-result-wrap'); const organizeResult = document.getElementById('organize-result');
+  const organizeSaveBtn = document.getElementById('organize-save-btn'); const organizeSaveMsg = document.getElementById('organize-save-msg');
   organizeInput.addEventListener('input', () => { document.getElementById('organize-char-count').textContent = organizeInput.value.length; });
-  organizeBtn.addEventListener('click', async () => { const note = organizeInput.value.trim(); if (!note) return showError(organizeStatus, '내용을 입력해주세요'); organizeBtn.disabled = true; organizeResultWrap.hidden = true; showLoading(organizeStatus, true); try { const data = await callApi('/api/organize', { note, ai: getAiSettings() }); showLoading(organizeStatus, false); organizeResult.textContent = data.result; organizeResultWrap.hidden = false; recordAiUse('organize_success'); updateActivityView(); } catch (err) { showError(organizeStatus, errorMessage(err)); } finally { organizeBtn.disabled = false; } });
+  organizeBtn.addEventListener('click', async () => { const note = organizeInput.value.trim(); if (!note) return showError(organizeStatus, '내용을 입력해주세요'); organizeBtn.disabled = true; organizeResultWrap.hidden = true; showLoading(organizeStatus, true); try { const data = await callApi('/api/organize', { note, ai: getAiSettings() }); showLoading(organizeStatus, false); organizeResult.textContent = data.result; organizeResultWrap.hidden = false; organizeSaveBtn.disabled = false; organizeSaveBtn.textContent = '그래프에 저장'; organizeSaveMsg.hidden = true; recordAiUse('organize_success'); updateActivityView(); } catch (err) { showError(organizeStatus, errorMessage(err)); } finally { organizeBtn.disabled = false; } });
   document.getElementById('organize-copy-btn').addEventListener('click', (e) => copyText(organizeResult.textContent, e.target));
+  organizeSaveBtn.addEventListener('click', () => {
+    const parsed = parseOrganizedNote(organizeResult.textContent);
+    const result = addNote(parsed.title, parsed.content, parsed.keywords);
+    organizeSaveMsg.hidden = false;
+    if (!result.ok) {
+      organizeSaveMsg.textContent = result.error;
+      organizeSaveMsg.className = 'error-msg';
+      return;
+    }
+    logEvent('note_saved');
+    updateActivityView();
+    if (typeof renderEffectPanel === 'function') renderEffectPanel();
+    syncNoteInBackground(parsed.title, parsed.content, parsed.keywords);
+    organizeSaveBtn.disabled = true;
+    organizeSaveBtn.textContent = '그래프에 저장됨 ✓';
+    organizeSaveMsg.className = 'muted';
+    organizeSaveMsg.textContent = '"그래프 탐색" 페이지에서 확인할 수 있어요.';
+  });
   const tabs = document.querySelectorAll('.tab-btn'); function openTab(id) { tabs.forEach((button) => button.classList.toggle('active', button.dataset.tab === id)); document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.toggle('active', panel.id === id)); } tabs.forEach((button) => button.addEventListener('click', () => openTab(button.dataset.tab))); if (location.hash === '#chat') openTab('tab-chat');
   const chatMessages = document.getElementById('chat-messages'); const chatInput = document.getElementById('chat-input'); const chatSendBtn = document.getElementById('chat-send-btn'); const chatStatus = document.getElementById('chat-status'); const chatHistory = [];
   function appendBubble(role, text) { const div = document.createElement('div'); div.className = `bubble ${role === 'user' ? 'me' : 'ai'}`; div.textContent = text; chatMessages.appendChild(div); chatMessages.scrollTop = chatMessages.scrollHeight; }
