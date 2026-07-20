@@ -40,12 +40,13 @@ def _sync_notion(title, content, keywords, token=None, database_id=None):
         'properties': {
             '제목': {'title': [{'text': {'content': title[:200]}}]},
             '키워드': {'rich_text': [{'text': {'content': ', '.join(keywords)}}]},
+            '내용': {'rich_text': [{'text': {'content': content[:2000]}}] if content else []},
         },
         'children': [
             {
                 'object': 'block',
                 'type': 'paragraph',
-                'paragraph': {'rich_text': [{'text': {'content': content}}]},
+                'paragraph': {'rich_text': [{'text': {'content': content}}] if content else []},
             },
         ],
     }
