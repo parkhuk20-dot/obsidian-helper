@@ -353,8 +353,10 @@ main { padding-top: var(--header-h); }
 }
 .graph-tooltip { background: var(--text); border-radius: 6px; color: var(--bg); font-size: 0.8rem; max-width: 180px; padding: 6px 8px; pointer-events: none; position: absolute; z-index: 2; }
 
-/* 검색: 카드 우측 상단에 고정, 돋보기를 누르면 입력창이 나타난다 */
-.graph-search { position: absolute; top: 12px; right: 12px; z-index: 5; display: flex; align-items: center; gap: 6px; }
+/* 검색: 그래프 영역(캔버스) 좌측 상단에 고정, 돋보기를 누르면 입력창이 나타난다.
+   .interactive-graph 기준 우측 상단에 두면 SELECTED NOTE 패널이 열려 2단 레이아웃이 될 때
+   패널 쪽으로 밀려 들어가 버리므로, 항상 그래프가 있는 .graph-wrap을 기준으로 고정한다. */
+.graph-search { position: absolute; top: 12px; left: 12px; z-index: 5; display: flex; align-items: center; gap: 6px; }
 .graph-search-toggle { background: var(--card); border: 1px solid var(--border); border-radius: 50%; color: var(--text); cursor: pointer; font-size: 1rem; height: 34px; width: 34px; flex-shrink: 0; }
 .graph-search-toggle:hover { background: var(--card-hover); }
 .graph-search input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 7px 10px; font-size: 0.85rem; font-family: inherit; width: 180px; }
@@ -364,7 +366,9 @@ main { padding-top: var(--header-h); }
 .graph-detail h2 { font-size: 1.1rem; word-break: break-all; }
 #graph-detail-content { color: var(--muted); font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; }
 #graph-detail-view .note-keywords { margin-top: 10px; }
-#graph-detail-view .btn { margin-top: 16px; }
+.graph-detail-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.detail-edit-toggle { background: transparent; border: 1px solid var(--border); border-radius: 50%; color: var(--text); cursor: pointer; font-size: 1rem; height: 30px; width: 30px; flex-shrink: 0; }
+.detail-edit-toggle:hover { background: var(--card-hover); transform: rotate(45deg); transition: transform 0.15s, background 0.15s; }
 
 /* SELECTED NOTE 편집 폼 — ID 선택자의 display가 [hidden]의 UA 기본값(display:none)보다
    명시도가 높아 덮어써버리므로, hidden일 때는 무조건 숨기도록 별도로 명시한다 */
