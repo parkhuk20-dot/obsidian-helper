@@ -366,8 +366,10 @@ main { padding-top: var(--header-h); }
 #graph-detail-view .note-keywords { margin-top: 10px; }
 #graph-detail-view .btn { margin-top: 16px; }
 
-/* SELECTED NOTE 편집 폼 */
+/* SELECTED NOTE 편집 폼 — ID 선택자의 display가 [hidden]의 UA 기본값(display:none)보다
+   명시도가 높아 덮어써버리므로, hidden일 때는 무조건 숨기도록 별도로 명시한다 */
 #graph-detail-edit-form { display: flex; flex-direction: column; gap: 10px; }
+#graph-detail-edit-form[hidden] { display: none; }
 #graph-detail-edit-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); }
 #graph-detail-edit-form input,
 #graph-detail-edit-form textarea {
