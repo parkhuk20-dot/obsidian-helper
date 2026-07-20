@@ -29,8 +29,8 @@
   const MIN_ENERGY = 0.04;  // 이보다 잠잠해지면 시뮬레이션 정지
 
   // 노드 크기: 연결이 가장 많은 노드가 NODE_MAX_R(가장 큰 형태=15px로 고정),
-  // 고립 노드는 NODE_MIN_R(1px). 그 사이는 현재 그래프의 최대 연결 수 대비 비율로 선형 보간한다.
-  const NODE_MIN_R = 1;
+  // 고립 노드는 NODE_MIN_R(6px). 그 사이는 현재 그래프의 최대 연결 수 대비 비율로 선형 보간한다.
+  const NODE_MIN_R = 6;
   const NODE_MAX_R = 15;
 
   const FIT_PADDING = 56; // 화면에 맞추기 시 그래프 바깥으로 남겨둘 여백(라벨 공간 포함)
@@ -222,7 +222,6 @@
     const styles = getComputedStyle(document.documentElement);
     const accent = styles.getPropertyValue('--accent').trim() || '#a78bfa';
     const text = styles.getPropertyValue('--text').trim() || '#e4e4e7';
-    const bg = styles.getPropertyValue('--bg').trim() || '#1e1e2e';
     const base = styles.getPropertyValue('--muted').trim() || '#7a7a8c';
 
     // 검색 중이면 검색 결과가 호버 강조보다 우선한다
@@ -273,22 +272,18 @@
       }
 
       // 제목은 마우스를 가까이 가져간 노드·그 직접 연결 노드, 또는 검색에 일치한 노드에만 보인다
-      if (highlightSet && highlightSet.has(n.id)) drawLabel(n, n.id === activeId, text, bg, 1);
+      if (highlightSet && highlightSet.has(n.id)) drawLabel(n, n.id === activeId, text, 1);
       ctx.globalAlpha = 1;
     }
 
     ctx.restore();
   }
 
-  function drawLabel(n, strong, color, bg, alpha) {
+  function drawLabel(n, strong, color, alpha) {
     const raw = n.title || '';
     const label = raw.length > 16 ? raw.slice(0, 16) + '…' : raw;
     ctx.font = (strong ? 'bold ' : '') + '12px sans-serif';
-    const w = ctx.measureText(label).width;
     const y = n.y + n.r + 12;
-    ctx.globalAlpha = alpha * 0.85;
-    ctx.fillStyle = bg;
-    ctx.fillRect(n.x - w / 2 - 5, y - 9, w + 10, 18);
     ctx.globalAlpha = alpha;
     ctx.fillStyle = color;
     ctx.fillText(label, n.x, y);
