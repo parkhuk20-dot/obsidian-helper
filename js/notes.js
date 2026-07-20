@@ -2,6 +2,7 @@
 const STORAGE_KEY = 'forest_notes';
 const NOTE_MAX_CONTENT = 500;
 const NOTE_MAX_COUNT = 20;
+const NOTES_DISPLAY_LIMIT = 4; // 노트 작성 화면에는 최근 노트만 보여준다 (전체는 그래프 탐색에서 확인)
 
 function getNotes() {
   try {
@@ -118,13 +119,23 @@ function renderKeywordChips(container, keywords) {
 function renderNotes() {
   const listEl = document.getElementById('notes-list');
   const emptyEl = document.getElementById('notes-empty');
+  const hintEl = document.getElementById('notes-list-hint');
   const addBtn = document.getElementById('add-note-btn');
   const notes = getNotes();
+  // 최근에 저장한 노트가 위로 오도록 정렬한 뒤, 최근 몇 개만 이 화면에 보여준다.
+  // 목록에서 안 보이는 노트도 그래프 탐색에는 그대로 남아 있다.
+  const recent = [...notes]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, NOTES_DISPLAY_LIMIT);
 
   listEl.innerHTML = '';
   emptyEl.hidden = notes.length > 0;
+  if (hintEl) {
+    hintEl.hidden = notes.length <= NOTES_DISPLAY_LIMIT;
+    hintEl.textContent = `최근 ${NOTES_DISPLAY_LIMIT}개만 보여드려요. 전체 ${notes.length}개는 그래프 탐색에서 확인할 수 있어요.`;
+  }
 
-  for (const note of notes) {
+  for (const note of recent) {
     const card = document.createElement('div');
     card.className = 'card note-card';
 
