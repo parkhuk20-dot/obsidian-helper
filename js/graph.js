@@ -17,6 +17,8 @@
   let bound = false;
   let pendingFit = false;    // 새 데이터가 안정되면 화면에 맞춰 자동으로 카메라를 조정한다
   let resizePending = false; // 리사이즈 이벤트를 한 프레임으로 묶어서 처리한다
+  let selectedId = null;     // 현재 SELECTED NOTE 패널에 열려 있는 노드
+  let searchIds = null;      // 검색어와 일치하는 노드 id 집합 (검색 중이 아니면 null)
 
   // 물리 상수 (노드 20개 안팎 기준으로 조정) — 좌표는 화면 픽셀이 아닌 자유로운 "월드" 단위
   const REPULSION = 5200;   // 노드끼리 밀어내는 힘
@@ -223,9 +225,11 @@
     const bg = styles.getPropertyValue('--bg').trim() || '#1e1e2e';
     const base = styles.getPropertyValue('--muted').trim() || '#7a7a8c';
 
-    const activeId = dragId || hoverId;
+    // 검색 중이면 검색 결과가 호버 강조보다 우선한다
+    const isSearching = !!searchIds;
+    const activeId = isSearching ? null : (dragId || hoverId);
     const neigh = activeId ? adjacency.get(activeId) : null;
-    const highlightSet = activeId ? new Set([activeId, ...(neigh ? [...neigh] : [])]) : null;
+    const highlightSet = isSearching ? searchIds : (activeId ? new Set([activeId, ...(neigh ? [...neigh] : [])]) : null);
 
     ctx.save();
     ctx.translate(view.tx, view.ty);
@@ -236,7 +240,11 @@
     for (const l of links) {
       const a = nodeById.get(l.from), b = nodeById.get(l.to);
       let strokeStyle, lineWidth;
-      if (!activeId) {
+      if (isSearching) {
+        const both = highlightSet.has(l.from) && highlightSet.has(l.to);
+        strokeStyle = both ? 'rgba(167,139,250,0.75)' : `rgba(120,120,140,${DIM_EDGE_ALPHA})`;
+        lineWidth = both ? 1.6 : 1;
+      } else if (!activeId) {
         strokeStyle = 'rgba(150,150,165,0.35)'; lineWidth = 1;
       } else if (l.from === activeId || l.to === activeId) {
         strokeStyle = 'rgba(167,139,250,0.75)'; lineWidth = 1.6;
@@ -248,15 +256,15 @@
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     }
 
-    // 노드 — 기본 상태는 무채색 점만. 상호작용 시: 활성 노드·이웃만 보라색 + 진하게, 나머지는 반투명
+    // 노드 — 기본 상태는 무채색 점만. 상호작용·검색 시: 대상 노드만 보라색 + 진하게, 나머지는 반투명
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const n of nodes) {
-      const highlighted = !activeId || highlightSet.has(n.id);
+      const highlighted = !highlightSet || highlightSet.has(n.id);
       const alpha = highlighted ? 1 : DIM_ALPHA;
       ctx.globalAlpha = alpha;
 
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-      ctx.fillStyle = (activeId && highlightSet.has(n.id)) ? accent : base;
+      ctx.fillStyle = (highlightSet && highlightSet.has(n.id)) ? accent : base;
       ctx.fill();
       if (n.id === activeId) {
         ctx.lineWidth = 2 / view.scale;
@@ -264,8 +272,8 @@
         ctx.stroke();
       }
 
-      // 제목은 마우스를 가까이 가져간 노드와 그 직접 연결 노드에만 보인다
-      if (activeId && highlightSet.has(n.id)) drawLabel(n, n.id === activeId, text, bg, 1);
+      // 제목은 마우스를 가까이 가져간 노드·그 직접 연결 노드, 또는 검색에 일치한 노드에만 보인다
+      if (highlightSet && highlightSet.has(n.id)) drawLabel(n, n.id === activeId, text, bg, 1);
       ctx.globalAlpha = 1;
     }
 
@@ -386,13 +394,35 @@
     const detail = document.getElementById('graph-detail');
     if (!detail) return;
     detail.hidden = false;
+    selectedId = note.id;
+
     document.getElementById('graph-detail-title').textContent = note.title;
     document.getElementById('graph-detail-content').textContent = note.content;
+    document.getElementById('graph-detail-view').hidden = false;
+    const form = document.getElementById('graph-detail-edit-form');
+    if (form) form.hidden = true;
+
+    // 예시 데이터(5개/100개 그래프)에는 저장된 원본 노트가 없으니 편집을 제공하지 않는다
+    const savedNote = typeof getNotes === 'function' ? getNotes().find((n) => n.id === note.id) : null;
+    const keywordsEl = document.getElementById('graph-detail-keywords');
+    if (keywordsEl && typeof renderKeywordChips === 'function' && typeof noteKeywords === 'function') {
+      renderKeywordChips(keywordsEl, savedNote ? noteKeywords(savedNote) : []);
+    }
+    const editBtn = document.getElementById('graph-detail-edit-btn');
+    if (editBtn) editBtn.hidden = !savedNote;
   }
 
   function hideDetail() {
     const detail = document.getElementById('graph-detail');
     if (detail && !detail.hidden) detail.hidden = true;
+    selectedId = null;
+  }
+
+  // 검색어와 제목·내용이 겹치는 노드만 강조한다. 빈 문자열이면 검색 모드를 끈다.
+  function applySearch(query) {
+    const q = (query || '').trim().toLowerCase();
+    searchIds = q ? new Set(nodes.filter((n) => (n.title + ' ' + n.content).toLowerCase().includes(q)).map((n) => n.id)) : null;
+    draw();
   }
 
   function renderGraph(noteList, linkList) {
@@ -421,4 +451,8 @@
   }
 
   window.renderGraph = renderGraph;
+  window.applyGraphSearch = applySearch;
+  window.clearGraphSearch = () => applySearch('');
+  window.getSelectedGraphNoteId = () => selectedId;
+  window.hideGraphDetail = hideDetail;
 })();

@@ -44,6 +44,8 @@ body {
 :root[data-theme="light"] #organize-input,
 :root[data-theme="light"] #chat-input,
 :root[data-theme="light"] .settings-panel input,
+:root[data-theme="light"] #graph-detail-edit-form input,
+:root[data-theme="light"] #graph-detail-edit-form textarea,
 :root[data-theme="light"] #organize-result { background: #f6f4fc; }
 :root[data-theme="light"] .bubble.ai { background: #ebe7f7; }
 
@@ -344,15 +346,37 @@ main { padding-top: var(--header-h); }
 .note-keywords { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
 .kw-chip { font-size: 0.72rem; color: var(--accent); background: rgba(167, 139, 250, 0.12); border: 1px solid rgba(167, 139, 250, 0.32); border-radius: 999px; padding: 1px 8px; }
 :root[data-theme="light"] .kw-chip { background: rgba(92, 98, 201, 0.1); border-color: rgba(92, 98, 201, 0.3); }
-.interactive-graph { display: grid; grid-template-columns: 1fr; gap: 18px; padding: 12px; }
+.interactive-graph { position: relative; display: grid; grid-template-columns: 1fr; gap: 18px; padding: 12px; }
 .interactive-graph .graph-wrap { position: relative; min-height: 440px; }
 @media (min-width: 769px) {
   .interactive-graph:has(.graph-detail:not([hidden])) { grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr); }
 }
 .graph-tooltip { background: var(--text); border-radius: 6px; color: var(--bg); font-size: 0.8rem; max-width: 180px; padding: 6px 8px; pointer-events: none; position: absolute; z-index: 2; }
+
+/* 검색: 카드 우측 상단에 고정, 돋보기를 누르면 입력창이 나타난다 */
+.graph-search { position: absolute; top: 12px; right: 12px; z-index: 5; display: flex; align-items: center; gap: 6px; }
+.graph-search-toggle { background: var(--card); border: 1px solid var(--border); border-radius: 50%; color: var(--text); cursor: pointer; font-size: 1rem; height: 34px; width: 34px; flex-shrink: 0; }
+.graph-search-toggle:hover { background: var(--card-hover); }
+.graph-search input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 7px 10px; font-size: 0.85rem; font-family: inherit; width: 180px; }
+.graph-search input:focus { outline: none; border-color: var(--accent); }
+
 .graph-detail { border-left: 1px solid var(--border); padding: 18px; }
 .graph-detail h2 { font-size: 1.1rem; word-break: break-all; }
-.graph-detail p:last-child { color: var(--muted); font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; }
+#graph-detail-content { color: var(--muted); font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; }
+#graph-detail-view .note-keywords { margin-top: 10px; }
+#graph-detail-view .btn { margin-top: 16px; }
+
+/* SELECTED NOTE 편집 폼 */
+#graph-detail-edit-form { display: flex; flex-direction: column; gap: 10px; }
+#graph-detail-edit-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); }
+#graph-detail-edit-form input,
+#graph-detail-edit-form textarea {
+  background: #1a1a28; border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); padding: 8px 10px; font-size: 0.9rem; font-family: inherit; resize: vertical;
+}
+#graph-detail-edit-form input:focus,
+#graph-detail-edit-form textarea:focus { outline: none; border-color: var(--accent); }
+.graph-detail-actions { display: flex; gap: 8px; }
 
 .links-wrap { display: flex; flex-direction: column; gap: 12px; }
 .link-card {

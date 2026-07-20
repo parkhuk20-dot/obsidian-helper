@@ -61,6 +61,29 @@ function deleteNote(id) {
   saveNotes(getNotes().filter((n) => n.id !== id));
 }
 
+// 제목·내용·키워드를 부분적으로 수정한다 (전달 안 한 항목은 기존 값 유지)
+function updateNote(id, { title, content, keywords } = {}) {
+  const notes = getNotes();
+  const idx = notes.findIndex((n) => n.id === id);
+  if (idx === -1) return { ok: false, error: '노트를 찾을 수 없어요' };
+
+  const t = (title !== undefined ? title : notes[idx].title).trim();
+  const c = (content !== undefined ? content : notes[idx].content).trim();
+  if (!t || !c) return { ok: false, error: '내용을 입력해주세요' };
+  if (c.length > NOTE_MAX_CONTENT) return { ok: false, error: `내용은 ${NOTE_MAX_CONTENT}자 이하로 적어주세요` };
+
+  const cleaned = [];
+  const seen = new Set();
+  (keywords !== undefined ? keywords : notes[idx].keywords || []).map(normalizeKeyword).forEach((kw) => {
+    const key = kw.toLowerCase();
+    if (kw && !seen.has(key)) { seen.add(key); cleaned.push(kw); }
+  });
+
+  notes[idx] = { ...notes[idx], title: t, content: c, keywords: cleaned.slice(0, 3) };
+  saveNotes(notes);
+  return { ok: true };
+}
+
 // 키워드를 공유하는 노트 쌍을 연결(간선)로 만든다 — 옵시디언의 태그·링크처럼
 function linksFromKeywords(notes) {
   const links = [];
@@ -79,6 +102,17 @@ function linksFromKeywords(notes) {
     }
   }
   return links;
+}
+
+// 키워드 배열을 '#키워드' 칩으로 그려 container에 채운다 (비어있으면 비운 채로 둔다)
+function renderKeywordChips(container, keywords) {
+  container.innerHTML = '';
+  keywords.forEach((kw) => {
+    const chip = document.createElement('span');
+    chip.className = 'kw-chip';
+    chip.textContent = '#' + kw;
+    container.appendChild(chip);
+  });
 }
 
 function renderNotes() {
@@ -115,12 +149,7 @@ function renderNotes() {
     if (kws.length) {
       const chips = document.createElement('div');
       chips.className = 'note-keywords';
-      kws.forEach((kw) => {
-        const chip = document.createElement('span');
-        chip.className = 'kw-chip';
-        chip.textContent = '#' + kw;
-        chips.appendChild(chip);
-      });
+      renderKeywordChips(chips, kws);
       card.appendChild(chips);
     }
 

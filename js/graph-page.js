@@ -9,6 +9,8 @@ function updateGraphButton() {
   const count = getNotes().length;
   analyzeBtn.disabled = count < 2;
   document.getElementById('analyze-hint').hidden = count >= 1;
+  const recatBtn = document.getElementById('recategorize-btn');
+  if (recatBtn) recatBtn.disabled = count < 2;
 }
 
 function renderResult(data) {
@@ -57,6 +59,111 @@ analyzeBtn.addEventListener('click', async () => {
 
 document.getElementById('demo-graph-btn').addEventListener('click', () => { analyzeStatus.innerHTML = '<p class="muted">예시 데이터입니다. 노드를 끌거나 클릭해보세요.</p>'; renderResult(demoData()); });
 document.getElementById('demo-large-graph-btn').addEventListener('click', () => { analyzeStatus.innerHTML = '<p class="muted">10개 주제, 100개 예시 메모를 force-directed로 배치했어요.</p>'; renderResult(demoData(true)); });
+
+// 이미 저장된 노트들의 키워드를 새 기준(1번째는 분야 카테고리)으로 다시 뽑아, 예전에 흩어져 있던
+// 노트들도 같은 분야끼리 새로 연결되게 한다. 노트 하나당 AI 호출이 발생해 순서대로 처리한다.
+const recategorizeBtn = document.getElementById('recategorize-btn');
+recategorizeBtn?.addEventListener('click', async () => {
+  const notes = getNotes();
+  if (notes.length < 2) return;
+  window.hideGraphDetail?.();
+  recategorizeBtn.disabled = true;
+  const originalLabel = recategorizeBtn.textContent;
+  const usedKeywords = [];
+  let failCount = 0;
+  for (let i = 0; i < notes.length; i += 1) {
+    recategorizeBtn.textContent = `다시 정리하는 중… (${i + 1}/${notes.length})`;
+    try {
+      const data = await callApi('/api/keywords', {
+        title: notes[i].title, content: notes[i].content,
+        existing_keywords: usedKeywords, ai: getAiSettings(),
+      });
+      const kws = Array.isArray(data.keywords) ? data.keywords : [];
+      updateNote(notes[i].id, { keywords: kws });
+      kws.forEach((k) => { if (!usedKeywords.includes(k)) usedKeywords.push(k); });
+    } catch {
+      failCount += 1;
+    }
+  }
+  recategorizeBtn.textContent = originalLabel;
+  recategorizeBtn.disabled = false;
+  analyzeStatus.innerHTML = failCount
+    ? `<p class="muted">다시 정리했어요. (${failCount}개는 실패해 기존 키워드를 유지했어요)</p>`
+    : '<p class="muted">노트를 다시 정리했어요. 같은 분야끼리 새로 연결됐어요.</p>';
+  renderSavedGraph();
+});
+
+// 검색: 돋보기를 누르면 입력창이 열리고, 입력하는 대로 제목·내용이 일치하는 노드만 그래프에서 밝아진다
+const graphSearchToggle = document.getElementById('graph-search-toggle');
+const graphSearchInput = document.getElementById('graph-search-input');
+graphSearchToggle?.addEventListener('click', () => {
+  const opening = graphSearchInput.hidden;
+  graphSearchInput.hidden = !opening;
+  if (opening) {
+    graphSearchInput.focus();
+  } else {
+    graphSearchInput.value = '';
+    window.clearGraphSearch?.();
+  }
+});
+graphSearchInput?.addEventListener('input', () => window.applyGraphSearch?.(graphSearchInput.value));
+graphSearchInput?.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  graphSearchInput.value = '';
+  graphSearchInput.hidden = true;
+  window.clearGraphSearch?.();
+});
+
+// SELECTED NOTE 편집: 제목·내용·키워드를 고쳐 저장하고, 그래프를 새 키워드 기준으로 다시 그린다
+const detailEditBtn = document.getElementById('graph-detail-edit-btn');
+const detailView = document.getElementById('graph-detail-view');
+const detailEditForm = document.getElementById('graph-detail-edit-form');
+const detailEditTitle = document.getElementById('detail-edit-title');
+const detailEditContent = document.getElementById('detail-edit-content');
+const detailEditKeywords = document.getElementById('detail-edit-keywords');
+const detailEditMsg = document.getElementById('detail-edit-msg');
+
+function closeDetailEditForm() {
+  detailEditForm.hidden = true;
+  detailView.hidden = false;
+  detailEditMsg.hidden = true;
+}
+
+detailEditBtn?.addEventListener('click', () => {
+  const id = window.getSelectedGraphNoteId?.();
+  const note = getNotes().find((n) => n.id === id);
+  if (!note) return;
+  detailEditTitle.value = note.title;
+  detailEditContent.value = note.content;
+  detailEditKeywords.value = noteKeywords(note).join(', ');
+  detailEditMsg.hidden = true;
+  detailView.hidden = true;
+  detailEditForm.hidden = false;
+  detailEditTitle.focus();
+});
+
+document.getElementById('detail-edit-cancel')?.addEventListener('click', closeDetailEditForm);
+
+document.getElementById('detail-edit-save')?.addEventListener('click', () => {
+  const id = window.getSelectedGraphNoteId?.();
+  if (!id) return;
+  const keywords = detailEditKeywords.value.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 3);
+  const result = updateNote(id, {
+    title: detailEditTitle.value, content: detailEditContent.value, keywords,
+  });
+  if (!result.ok) {
+    detailEditMsg.textContent = result.error;
+    detailEditMsg.hidden = false;
+    return;
+  }
+  // 그래프 재구성 전에 지금 열려 있는 패널도 새 내용으로 즉시 반영한다
+  const updated = getNotes().find((n) => n.id === id);
+  document.getElementById('graph-detail-title').textContent = updated.title;
+  document.getElementById('graph-detail-content').textContent = updated.content;
+  renderKeywordChips(document.getElementById('graph-detail-keywords'), noteKeywords(updated));
+  closeDetailEditForm();
+  renderSavedGraph();
+});
 
 document.getElementById('copy-md-btn').addEventListener('click', (event) => {
   if (!lastAnalysis) return;
