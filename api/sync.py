@@ -83,8 +83,33 @@ def _sync_discord(title, content, keywords, webhook_url=None):
         return 'error'
 
 
+def _origin_allowed(origin):
+    """이 사이트(또는 로컬 개발 서버)에서 온 요청인지 Origin/Referer로 확인한다.
+
+    /api/sync는 로그인 없이 누구나 호출 가능한 공개 엔드포인트라, 방어가 없으면
+    이 URL을 아는 사람 누구나 서버에 등록된 실제 Notion·Discord로 임의의 글을
+    써 넣을 수 있다. 헤더는 위조 가능해 완벽한 인증은 아니지만, 자동화된 스캔·
+    무작위 호출 시도는 대부분 걸러낸다.
+    """
+    if not origin:
+        return False
+    try:
+        host = urllib.parse.urlparse(origin).hostname or ''
+    except Exception:
+        return False
+    if host in ('localhost', '127.0.0.1'):
+        return True
+    return host == 'obsidian-helper.vercel.app' or (
+        host.startswith('obsidian-helper') and host.endswith('.vercel.app')
+    )
+
+
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
+        origin = self.headers.get('Origin') or self.headers.get('Referer') or ''
+        if not _origin_allowed(origin):
+            return self._send(403, {'error': '허용되지 않은 요청이에요'})
+
         try:
             body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
         except Exception:
