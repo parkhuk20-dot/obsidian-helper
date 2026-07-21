@@ -120,3 +120,12 @@ obsidian-helper/
 ## 서비스 기획서
 
 서비스 목적, 타겟 사용자, 페이지 구성, AI 기능의 입력·출력·실패 처리 기준은 [SERVICE_PLAN.md](SERVICE_PLAN.md)에서 확인할 수 있어요.
+
+## 스크린샷 · AI 코딩 도구 사용 로그
+
+배포된 URL에서 직접 찍은 데스크톱·모바일·AI 기능 동작 스크린샷은 [docs/screenshots](docs/screenshots)에, AI 코딩 도구(Claude Code)로 개발하며 실제로 겪은 트러블슈팅 과정은 [docs/ai-tool-usage-log.md](docs/ai-tool-usage-log.md)에 정리해뒀어요.
+
+|  |  |
+| --- | --- |
+| ![홈 화면](docs/screenshots/desktop-01-home.png) | ![그래프](docs/screenshots/desktop-04-graph.png) |
+| ![AI 노트 정리기](docs/screenshots/desktop-02-ai-feature-organize.png) | ![모바일 홈](docs/screenshots/mobile-01-home.png) |
