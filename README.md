@@ -2,6 +2,8 @@
 
 흩어진 메모를 적으면 AI가 아이디어 사이의 연결을 찾아 그래프로 보여주는 **옵시디언 입문 도우미** 웹 서비스.
 
+**배포 URL**: https://obsidian-helper.vercel.app
+
 ## 주요 기능
 
 - **아이디어 그래프**: 노트를 추가하면 저장된 노트끼리 AI가 뽑은 키워드로 자동 연결되고, "내 노트 AI 분석"으로 의미 기반 연결(이유 포함)을 더할 수 있어요. 결과는 옵시디언용 마크다운(`[[내부링크]]` 포함)으로 복사할 수 있어요.
@@ -28,9 +30,10 @@ vercel dev
 
 ## 배포 (Vercel)
 
-1. GitHub 저장소를 Vercel에 연결
-2. **Settings → Environment Variables**에 `OPENAI_API_KEY` 등록
-3. 배포 후 배포 URL에서 연결 분석·정리기·챗봇 동작 확인
+1. GitHub 저장소를 Vercel에 연결 (또는 `vercel link`)
+2. **Settings → Environment Variables**에 `OPENAI_API_KEY` 등록 (Notion·Discord 연동을 서버 기본값으로도 쓰려면 아래 표의 변수도 함께)
+3. `vercel --prod`로 배포 후 배포 URL에서 연결 분석·정리기·챗봇 동작 확인
+4. **Framework Preset은 반드시 "Other"**로 두세요. "Python"으로 설정되면 `api/`의 여러 서버리스 함수를 하나의 Python 앱 진입점으로 오인해 빌드가 실패합니다.
 
 > ⚠️ API 키는 환경 변수로만 관리해요. `.env*` 파일은 절대 커밋하지 마세요 (`.gitignore`에 포함됨).
 
@@ -89,15 +92,16 @@ obsidian-helper/
 │   ├── graph.js        # 드래그·호버·클릭 가능한 canvas 그래프
 │   └── graph-page.js   # 그래프 분석·검색·SELECTED NOTE 편집 페이지 로직
 ├── api/
-│   ├── ai_client.py    # OpenAI·Anthropic·Google 공용 어댑터
-│   ├── connect.py      # 아이디어 연결 분석
-│   ├── organize.py     # 노트 정리기
-│   ├── chat.py         # Q&A 챗봇
-│   ├── keywords.py     # 노트 저장 시 키워드 3개 추출 (1번째는 분야 카테고리, 기존 카테고리 우선 재사용)
+│   ├── connect.py      # 아이디어 연결 분석 (OpenAI·Anthropic·Google 공용 어댑터 포함)
+│   ├── organize.py     # 노트 정리기 (〃)
+│   ├── chat.py         # Q&A 챗봇 (〃)
+│   ├── keywords.py     # 노트 저장 시 키워드 3개 추출 (1번째는 분야 카테고리, 기존 카테고리 우선 재사용, 〃)
 │   └── sync.py         # 노트를 Notion에 저장·Discord로 알림 (선택)
 ├── requirements.txt
 └── vercel.json
 ```
+
+> `connect.py`·`organize.py`·`chat.py`·`keywords.py`는 각각 AI 공급자 어댑터 코드를 그대로 포함하고 있어요(공용 모듈로 분리하지 않음). Vercel의 Python 빌더가 `api/` 안의 형제 파일을 함수마다 항상 함께 번들링해주지는 않아서(실배포에서 `ModuleNotFoundError` 확인), 각 서버리스 함수를 독립적으로 완결되게 만들었습니다.
 
 ## 보너스 기능
 
