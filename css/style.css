@@ -161,6 +161,8 @@ code {
   font-family: inherit;
 }
 .settings-panel input:focus { outline: none; border-color: var(--accent); }
+.settings-load-btn { width: 100%; margin: -4px 0 10px; }
+.settings-load-msg { font-size: 0.8rem; margin: -4px 0 12px; }
 .settings-status { font-size: 0.78rem; margin: -6px 0 14px; }
 .settings-status span { color: var(--accent); }
 .settings-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }

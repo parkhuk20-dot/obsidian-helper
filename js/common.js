@@ -1,4 +1,16 @@
 // 공통 메뉴 · 테마 · 이 브라우저 안에서만 저장되는 간단한 활동 통계
+
+// 공통 API 헬퍼 — 모든 페이지가 이 파일을 불러오므로 여기 둔다
+// (설정 모달의 "Notion에서 데이터 불러오기"가 main.js를 안 불러오는
+// index.html/guide.html에서도 동작해야 하기 때문)
+async function callApi(endpoint, payload) {
+  const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(30000) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요');
+  return data;
+}
+function errorMessage(err) { if (err.name === 'TimeoutError' || err.name === 'AbortError') return '응답이 지연되고 있어요. 다시 시도해주세요'; if (err instanceof TypeError || err.name === 'SyntaxError') return '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요'; return err.message || '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요'; }
+
 const ACTIVITY_KEY = 'forest_activity';
 const AI_SETTINGS_KEY = 'forest_ai_settings';
 const INTEGRATIONS_KEY = 'forest_integrations'; // Notion·Discord 연동 정보 — 이 브라우저에만 저장
@@ -181,6 +193,8 @@ function buildSettingsModal() {
       <label>Notion Database ID
         <input type="text" id="settings-notion-db" placeholder="32자리 데이터베이스 ID" autocomplete="off">
       </label>
+      <button type="button" class="btn btn-secondary settings-load-btn" id="settings-notion-load">Notion에서 데이터 불러오기</button>
+      <p class="settings-load-msg" id="settings-load-msg" hidden></p>
       <p class="settings-status" id="settings-status"></p>
       <div class="settings-footer">
         <button type="button" class="btn btn-secondary" id="settings-cancel">취소</button>
@@ -229,6 +243,49 @@ function initSettingsModal() {
     });
     renderStatus();
     close();
+  });
+
+  // Notion에서 데이터 불러오기: 자동 동기화가 아니라 이 버튼을 눌렀을 때만 실행된다.
+  // 성공하면 이 브라우저의 노트를 Notion 내용으로 덮어쓴다 — Notion을 "진짜 보관소"로 쓰는 흐름.
+  document.getElementById('settings-notion-load').addEventListener('click', async () => {
+    const loadBtn = document.getElementById('settings-notion-load');
+    const loadMsg = document.getElementById('settings-load-msg');
+    const token = tokenInput.value.trim();
+    const databaseId = dbInput.value.trim();
+
+    if (!token || !databaseId) {
+      loadMsg.className = 'settings-load-msg error-msg';
+      loadMsg.textContent = 'Notion Integration Token과 Database ID를 먼저 입력해주세요';
+      loadMsg.hidden = false;
+      return;
+    }
+
+    loadBtn.disabled = true;
+    const originalLabel = loadBtn.textContent;
+    loadBtn.textContent = '불러오는 중…';
+    loadMsg.hidden = true;
+
+    try {
+      const data = await callApi('/api/notion_fetch', { notion_token: token, notion_database_id: databaseId });
+      const notes = Array.isArray(data.notes) ? data.notes : [];
+      localStorage.setItem('forest_notes', JSON.stringify(notes));
+      // 불러오기가 성공했다는 건 값이 유효하다는 뜻이므로 그대로 저장해둔다
+      saveIntegrations({ discordWebhookUrl: discordInput.value.trim(), notionToken: token, notionDatabaseId: databaseId });
+      renderStatus();
+      loadMsg.className = 'settings-load-msg muted';
+      loadMsg.textContent = `노트 ${notes.length}개를 불러왔어요. 이 브라우저에 있던 기존 노트는 덮어써졌어요.`;
+      loadMsg.hidden = false;
+      if (typeof renderNotes === 'function') renderNotes();
+      if (typeof renderSavedGraph === 'function') renderSavedGraph();
+      if (typeof updateActivityView === 'function') updateActivityView();
+    } catch (err) {
+      loadMsg.className = 'settings-load-msg error-msg';
+      loadMsg.textContent = errorMessage(err);
+      loadMsg.hidden = false;
+    } finally {
+      loadBtn.disabled = false;
+      loadBtn.textContent = originalLabel;
+    }
   });
 }
 

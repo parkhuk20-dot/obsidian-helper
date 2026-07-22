@@ -3,6 +3,7 @@
     "api/chat.py": { "maxDuration": 30 },
     "api/connect.py": { "maxDuration": 30 },
     "api/keywords.py": { "maxDuration": 30 },
+    "api/notion_fetch.py": { "maxDuration": 30 },
     "api/organize.py": { "maxDuration": 30 },
     "api/sync.py": { "maxDuration": 30 }
   }

@@ -1,11 +1,6 @@
-// 공통 API 헬퍼와 노트 작성·AI 도구 화면 기능
-async function callApi(endpoint, payload) {
-  const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(30000) });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요');
-  return data;
-}
-function errorMessage(err) { if (err.name === 'TimeoutError' || err.name === 'AbortError') return '응답이 지연되고 있어요. 다시 시도해주세요'; if (err instanceof TypeError || err.name === 'SyntaxError') return '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요'; return err.message || '일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요'; }
+// 노트 작성·AI 도구 화면 기능 (공통 API 헬퍼 callApi/errorMessage는 모든 페이지가 불러오는
+// common.js로 옮겨졌다 — index.html/guide.html처럼 이 파일을 안 불러오는 페이지에도
+// 설정 모달의 "Notion에서 데이터 불러오기" 버튼이 있어서, 그쪽에서도 써야 하기 때문)
 function showLoading(el, on) { el.innerHTML = on ? '<div class="loading"><div class="spinner"></div>AI가 생각하는 중이에요…</div>' : ''; }
 function showError(el, msg) { el.innerHTML = ''; const p = document.createElement('p'); p.className = 'error-msg'; p.textContent = msg; el.appendChild(p); }
 async function copyText(text, btn) { try { await navigator.clipboard.writeText(text); const original = btn.textContent; btn.textContent = '복사됐어요!'; setTimeout(() => { btn.textContent = original; }, 1500); } catch { alert('복사에 실패했어요. 직접 선택해서 복사해주세요'); } }
